@@ -113,13 +113,10 @@ export function SimulatorView({
   };
 
   const handleActivate = () => {
-    runApiCall("/api/v1/license/activate", "activate", {
+    runApiCall("/api/licenses/activate", "activate", {
       license_key: selectedLicenseKey,
-      app_slug: selectedAppSlug,
-      machine_fingerprint: machineFingerprint,
+      device_fingerprint: machineFingerprint,
       device_name: deviceName,
-      os_info: osInfo,
-      app_version: appVersion,
     });
   };
 

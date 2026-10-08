@@ -8,14 +8,16 @@ export const activateLicenseSchema = z
   .object({
     license_key: z
       .string()
+      .trim()
       .min(8, "La clave de licencia es requerida")
       .max(64, "Longitud máxima de clave excedida")
       .regex(/^[A-Za-z0-9\-_]+$/, "Formato de clave inválido"),
     device_fingerprint: z
       .string()
+      .trim()
       .min(8, "La huella de dispositivo (HWID) es requerida")
       .max(128, "Longitud de huella inválida"),
-    device_name: z.string().max(128).optional(),
+    device_name: z.string().trim().max(128).optional(),
   })
   .strict();
 
@@ -26,10 +28,12 @@ export const validateLicenseSchema = z
   .object({
     license_key: z
       .string()
+      .trim()
       .min(8, "La clave de licencia es requerida")
       .max(64),
     device_fingerprint: z
       .string()
+      .trim()
       .min(8, "La huella de dispositivo es requerida")
       .max(128),
   })
@@ -42,10 +46,12 @@ export const deactivateLicenseSchema = z
   .object({
     license_key: z
       .string()
+      .trim()
       .min(8, "La clave de licencia es requerida")
       .max(64),
     device_fingerprint: z
       .string()
+      .trim()
       .min(8, "La huella de dispositivo es requerida")
       .max(128),
   })

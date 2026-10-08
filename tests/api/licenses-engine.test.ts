@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
 import { POST as activateRoute } from "@/app/api/licenses/activate/route";
+import { POST as singularActivateRoute } from "@/app/api/license/activate/route";
 import { POST as validateRoute } from "@/app/api/licenses/validate/route";
 import { POST as deactivateRoute } from "@/app/api/licenses/deactivate/route";
 import { GET as healthRoute } from "@/app/health/route";
@@ -74,6 +75,27 @@ describe("Motor de Licencias: Suite de Verificación (Render + Supabase + Vercel
       expect(payload.device_fingerprint).toBe(testHwid);
       expect(payload.license_key).toBe(activeLicenseKey);
       expect(payload.offline_valid_until).toBeDefined();
+    });
+
+    it("Alias singular: Responde correctamente en POST /api/license/activate previniendo 404", async () => {
+      const aliasHwid = "hwid_singular_alias_test_99";
+      const req = new NextRequest("http://localhost:3000/api/license/activate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          license_key: activeLicenseKey,
+          device_fingerprint: aliasHwid,
+          device_name: "Equipo-Alias-Test",
+        }),
+      });
+
+      const res = await singularActivateRoute(req);
+      expect(res.status).toBe(200);
+
+      const json = await res.json();
+      expect(json.success).toBe(true);
+      expect(json.token).toBeDefined();
+      expect(json.license.license_key).toBe(activeLicenseKey);
     });
 
     it("Reactivación idempotente: Si el equipo ya está vinculado, renueva el token sin consumir asientos adicionales", async () => {

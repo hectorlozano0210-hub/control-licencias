@@ -105,34 +105,29 @@ def activate_license(license_key):
 if __name__ == "__main__":
     activate_license("PROD-ENT-8F12-9A4B-3C2D-1E7F")`;
 
-  const restCode = `# 1. ACTIVACIÓN DE EQUIPO (Descuenta 1 cupo)
-curl -X POST https://tudominio.com/api/v1/license/activate \\
+  const restCode = `# 1. ACTIVACIÓN DE EQUIPO (Descuenta 1 cupo y emite token offline)
+curl -X POST https://tudominio.com/api/licenses/activate \\
   -H "Content-Type: application/json" \\
   -d '{
     "license_key": "PROD-ENT-8F12-9A4B-3C2D-1E7F",
-    "app_slug": "control-horarios",
-    "machine_fingerprint": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "device_name": "TERMINAL-01",
-    "os_info": "Windows 11 Pro",
-    "app_version": "2.4.0"
+    "device_fingerprint": "hwid_e3b0c44298fc1c149afbf4c8996fb924",
+    "device_name": "TERMINAL-01"
   }'
 
-# 2. VERIFICACIÓN PERIÓDICA (Chequeo de expiración y estado)
-curl -X POST https://tudominio.com/api/v1/license/verify \\
+# 2. VALIDACIÓN PERIÓDICA / HEARTBEAT
+curl -X POST https://tudominio.com/api/licenses/validate \\
   -H "Content-Type: application/json" \\
   -d '{
     "license_key": "PROD-ENT-8F12-9A4B-3C2D-1E7F",
-    "app_slug": "control-horarios",
-    "machine_fingerprint": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "app_version": "2.4.0"
+    "device_fingerprint": "hwid_e3b0c44298fc1c149afbf4c8996fb924"
   }'
 
-# 3. HEARTBEAT EN VIVO (Ping de presencia activa)
-curl -X POST https://tudominio.com/api/v1/license/heartbeat \\
+# 3. DESVINCULACIÓN / DESACTIVACIÓN (Libera el cupo)
+curl -X POST https://tudominio.com/api/licenses/deactivate \\
   -H "Content-Type: application/json" \\
   -d '{
     "license_key": "PROD-ENT-8F12-9A4B-3C2D-1E7F",
-    "machine_fingerprint": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    "device_fingerprint": "hwid_e3b0c44298fc1c149afbf4c8996fb924"
   }'`;
 
   const currentCode =

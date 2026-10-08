@@ -4,6 +4,7 @@ import { GET as getLive } from "@/app/live/route";
 import { GET as getHealth } from "@/app/health/route";
 import { middleware, resolveClientIp } from "@/middleware";
 import { rateLimiter } from "@/lib/security/rate-limiter";
+import { getDatabaseConfig, extractSupabaseUrlFromDatabaseUrl } from "@/lib/supabase";
 
 describe("Smoke Tests: Verificación de Puesta en Marcha y Observabilidad", () => {
   beforeEach(() => {
@@ -57,6 +58,44 @@ describe("Smoke Tests: Verificación de Puesta en Marcha y Observabilidad", () =
       expect(data.status).toBe("degraded");
       expect(data.database.connected).toBe(false);
       expect(data.database.error).toBeDefined();
+    });
+
+    it("Prioriza SUPABASE_URL y resuelve correctamente las credenciales de base de datos", () => {
+      const originalDirect = process.env.SUPABASE_URL;
+      const originalKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+      try {
+        process.env.SUPABASE_URL = "https://prod-db.supabase.co";
+        process.env.SUPABASE_SERVICE_ROLE_KEY = "test-role-key-123";
+
+        const config = getDatabaseConfig();
+        expect(config.isConfigured).toBe(true);
+        expect(config.source).toBe("SUPABASE_URL");
+        expect(config.url).toBe("https://prod-db.supabase.co");
+      } finally {
+        if (originalDirect) process.env.SUPABASE_URL = originalDirect;
+        else delete process.env.SUPABASE_URL;
+        if (originalKey) process.env.SUPABASE_SERVICE_ROLE_KEY = originalKey;
+        else delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+      }
+    });
+
+    it("Extrae correctamente la URL de Supabase desde DATABASE_URL (Pooler y Direct)", () => {
+      // 1. Formato Pooler: postgres.<project_ref>
+      const urlPooler = extractSupabaseUrlFromDatabaseUrl(
+        "postgresql://postgres.myprojectref123:password@aws-0-us-east-1.pooler.supabase.com:6543/postgres"
+      );
+      expect(urlPooler).toBe("https://myprojectref123.supabase.co");
+
+      // 2. Formato Directo: db.<project_ref>.supabase.co
+      const urlDirect = extractSupabaseUrlFromDatabaseUrl(
+        "postgresql://postgres:secret@db.customproject789.supabase.co:5432/postgres"
+      );
+      expect(urlDirect).toBe("https://customproject789.supabase.co");
+
+      // 3. Formato HTTP directo
+      const urlHttp = extractSupabaseUrlFromDatabaseUrl("https://direct-api.supabase.co");
+      expect(urlHttp).toBe("https://direct-api.supabase.co");
     });
   });
 

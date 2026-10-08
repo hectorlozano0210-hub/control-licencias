@@ -5,6 +5,14 @@ const nextConfig = {
   experimental: {
     instrumentationHook: true,
   },
+  async rewrites() {
+    return [
+      {
+        source: "/api/license/activate",
+        destination: "/api/licenses/activate",
+      },
+    ];
+  },
 };
 
 export default nextConfig;
