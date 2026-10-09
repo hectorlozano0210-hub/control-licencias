@@ -101,7 +101,7 @@ export class LicensesEngine {
         // 1. Consultar licencia directamente en la tabla oficial 'licenses'
         const { data: lic, error: licErr } = await supabase
           .from("licenses")
-          .select("id, license_key, status, expires_at, max_activations, current_activations, max_seats, current_seats, plan_tier")
+          .select("id, license_key, status, expires_at, max_activations, current_activations, plan_tier")
           .eq("license_key", key)
           .maybeSingle();
 
@@ -143,8 +143,8 @@ export class LicensesEngine {
           };
         }
 
-        const maxLimit = lic.max_activations ?? lic.max_seats ?? 1;
-        const currentCount = lic.current_activations ?? lic.current_seats ?? 0;
+        const maxLimit = lic.max_activations ?? 1;
+        const currentCount = lic.current_activations ?? 0;
         const tier = lic.plan_tier || "standard";
 
         // 2. Comprobar si el dispositivo ya está registrado (Reactivación idempotente)
@@ -494,7 +494,7 @@ export class LicensesEngine {
 
         const { data: lic, error: licErr } = await supabase
           .from("licenses")
-          .select("id, current_activations, current_seats")
+          .select("id, current_activations")
           .eq("license_key", key)
           .maybeSingle();
 
@@ -526,7 +526,7 @@ export class LicensesEngine {
           .delete()
           .eq("id", act.id);
 
-        const currentCount = lic.current_activations ?? lic.current_seats ?? 1;
+        const currentCount = lic.current_activations ?? 1;
         const newCount = Math.max(0, currentCount - 1);
 
         await supabase
