@@ -4,6 +4,10 @@
  * Permite registrar la captura de señales del SO para Graceful Shutdown.
  */
 export async function register() {
+  if (process.env.NEXT_PHASE === "phase-production-build") {
+    return;
+  }
+
   if (process.env.NEXT_RUNTIME === "nodejs") {
     let isShuttingDown = false;
 

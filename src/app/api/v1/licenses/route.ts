@@ -3,6 +3,8 @@ import { store } from "@/lib/store";
 import { createLicenseSchema, patchLicenseSchema, validateRequestBody } from "@/lib/security/validators";
 import { handleApiError } from "@/lib/security/error-handler";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   try {
     const licenses = store.getLicenses();

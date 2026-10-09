@@ -4,6 +4,8 @@ import { signLicensePayload, validateKeyChecksum } from "@/lib/crypto";
 import { activateLicenseSchema, validateRequestBody } from "@/lib/security/validators";
 import { handleApiError } from "@/lib/security/error-handler";
 
+export const dynamic = "force-dynamic";
+
 export async function POST(req: NextRequest) {
   try {
     // 1. Strict validation via Zod (blocks mass-assignment and unknown fields)

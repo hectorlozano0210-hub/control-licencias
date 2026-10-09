@@ -4,6 +4,8 @@ import { signLicensePayload, validateKeyChecksum } from "@/lib/crypto";
 import { verifyLicenseSchema, validateRequestBody } from "@/lib/security/validators";
 import { handleApiError } from "@/lib/security/error-handler";
 
+export const dynamic = "force-dynamic";
+
 export async function POST(req: NextRequest) {
   try {
     const validation = await validateRequestBody(req, verifyLicenseSchema);
