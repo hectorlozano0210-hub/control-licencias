@@ -23,6 +23,11 @@ COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 
+# Variables dummy para el paso de compilación estática (next build)
+ENV NEXT_PUBLIC_SUPABASE_URL=https://placeholder.supabase.co
+ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=placeholder
+
+# Compilación estricta sin pruebas ni llamadas externas
 RUN npm run build
 
 # 4. Stage Runner (Lightweight Production Image)

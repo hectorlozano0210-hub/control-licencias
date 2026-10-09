@@ -48,11 +48,15 @@ export function sanitizeSupabaseUrl(rawUrl: string | null | undefined): string |
     cleaned = cleaned.replace(/^(https:\/\/[^\/\s]+).*$/, "$1");
   }
 
-  // 4. Garantizar estrictamente que inicie con 'https://' y no tenga sufijos ni barras finales
-  cleaned = cleaned.replace(/\/+$/, "");
+  // 4. Garantizar estrictamente que elimine cualquier prefijo/sufijo de API si viene configurado por error
+  cleaned = cleaned.replace(/\/rest\/v1\/?$/, "").replace(/\/+$/, "");
+
   if (!cleaned.startsWith("https://")) {
     cleaned = `https://${cleaned.replace(/^https?:\/\//, "")}`;
   }
+
+  // Sanitización final: sin prefijo/sufijo de API ni barras finales
+  cleaned = cleaned.replace(/\/rest\/v1\/?$/, "").replace(/\/+$/, "");
 
   return cleaned;
 }
@@ -193,7 +197,8 @@ export function getSupabaseClient(): SupabaseClient | null {
     return null;
   }
 
-  const cleanUrl = sanitizeSupabaseUrl(config.url) || config.url;
+  let cleanUrl = sanitizeSupabaseUrl(config.url) || config.url;
+  cleanUrl = cleanUrl.replace(/\/rest\/v1\/?$/, "").replace(/\/+$/, "");
   const cacheKey = `${cleanUrl}::${config.key}`;
   if (cachedClient && cachedClientKey === cacheKey) {
     return cachedClient;

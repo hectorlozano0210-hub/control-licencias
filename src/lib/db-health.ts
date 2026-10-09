@@ -32,8 +32,17 @@ export async function checkDatabaseHealth(forceFailure = false): Promise<Databas
     if (supabase) {
       const start = performance.now();
       try {
-        // Query de ping real a PostgreSQL en Supabase
-        const { error } = await supabase.from("companies").select("id").limit(1);
+        // Query de ping real a PostgreSQL en Supabase con timeout de 3 segundos
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3000);
+
+        const { error } = await supabase
+          .from("companies")
+          .select("id")
+          .limit(1)
+          .abortSignal(controller.signal);
+
+        clearTimeout(timeoutId);
         const latency_ms = Math.round(performance.now() - start);
 
         if (error) {
