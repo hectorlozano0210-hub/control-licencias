@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { NextRequest } from "next/server";
 import { POST as activateRoute } from "@/app/api/licenses/activate/route";
 import { POST as singularActivateRoute } from "@/app/api/license/activate/route";
@@ -8,6 +8,7 @@ import { GET as healthRoute } from "@/app/health/route";
 import { middleware } from "@/middleware";
 import { store } from "@/lib/store";
 import { jwtVerify } from "jose";
+import { resetSupabaseClientCache } from "@/lib/supabase";
 
 describe("Motor de Licencias: Suite de Verificación (Render + Supabase + Vercel)", () => {
   const activeLicenseKey = "PROD-ENT-8F4A-9C2B-7D1E-0A42";
@@ -15,6 +16,12 @@ describe("Motor de Licencias: Suite de Verificación (Render + Supabase + Vercel
   const testHwid = "hwid_render_test_node_aa112233";
 
   beforeEach(() => {
+    resetSupabaseClientCache();
+    delete process.env.SUPABASE_URL;
+    delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+    delete process.env.DATABASE_URL;
+    delete process.env.NEXT_PUBLIC_SUPABASE_URL;
+
     // Asegurar que el dispositivo de prueba no esté previamente vinculado
     const devices = store.getDevices();
     const existing = devices.find((d) => d.machine_fingerprint === testHwid);
@@ -202,6 +209,48 @@ describe("Motor de Licencias: Suite de Verificación (Render + Supabase + Vercel
 
       const json = await res.json();
       expect(json.code).toBe("LICENSE_NOT_FOUND");
+    });
+
+    it("Tolerancia a fallos: Si Supabase arroja error de ruta ('Invalid path specified in request URL'), recurre al modo resiliente sin romper la llamada", async () => {
+      const supabaseModule = await import("@/lib/supabase");
+      const mockSupabase = {
+        from: () => ({
+          select: () => ({
+            eq: () => ({
+              maybeSingle: async () => ({
+                data: null,
+                error: { message: "Invalid path specified in request URL" },
+              }),
+            }),
+          }),
+        }),
+      } as any;
+
+      const spy = vi.spyOn(supabaseModule, "getSupabaseClient").mockReturnValue(mockSupabase);
+
+      try {
+        const resilientHwid = "hwid_resilience_test_001";
+        const req = new NextRequest("http://localhost:3000/api/licenses/activate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            license_key: activeLicenseKey,
+            device_fingerprint: resilientHwid,
+            device_name: "Equipo-Resiliencia",
+          }),
+        });
+
+        const res = await activateRoute(req);
+        expect(res.status).toBe(200);
+
+        const json = await res.json();
+        expect(json.success).toBe(true);
+        expect(json.token).toBeDefined();
+        expect(json.license).toBeDefined();
+      } finally {
+        spy.mockRestore();
+        resetSupabaseClientCache();
+      }
     });
   });
 

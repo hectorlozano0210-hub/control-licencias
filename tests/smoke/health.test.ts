@@ -97,6 +97,24 @@ describe("Smoke Tests: Verificación de Puesta en Marcha y Observabilidad", () =
       const urlHttp = extractSupabaseUrlFromDatabaseUrl("https://direct-api.supabase.co");
       expect(urlHttp).toBe("https://direct-api.supabase.co");
     });
+
+    it("Sanitiza SUPABASE_URL eliminando barras diagonales al final (trailing slashes)", () => {
+      const originalDirect = process.env.SUPABASE_URL;
+      const originalKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+      try {
+        process.env.SUPABASE_URL = "https://prod-db.supabase.co///";
+        process.env.SUPABASE_SERVICE_ROLE_KEY = "test-role-key-123";
+
+        const config = getDatabaseConfig();
+        expect(config.url).toBe("https://prod-db.supabase.co");
+      } finally {
+        if (originalDirect) process.env.SUPABASE_URL = originalDirect;
+        else delete process.env.SUPABASE_URL;
+        if (originalKey) process.env.SUPABASE_SERVICE_ROLE_KEY = originalKey;
+        else delete process.env.SUPABASE_SERVICE_ROLE_KEY;
+      }
+    });
   });
 
   // =========================================================================

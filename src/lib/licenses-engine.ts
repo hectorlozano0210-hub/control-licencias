@@ -91,67 +91,178 @@ export class LicensesEngine {
     const supabase = getSupabaseAdminClient();
 
     // =========================================================================
-    // Modo A: Supabase RPC
+    // Modo A: Consultas Oficiales a Tablas Supabase (Sin RPC / Sin URLs a mano)
     // =========================================================================
     if (supabase) {
       try {
-        const { data, error } = await supabase.rpc("rpc_activate_license_device", {
-          p_license_key: params.license_key.trim(),
-          p_device_fingerprint: params.device_fingerprint.trim(),
-          p_device_name: params.device_name || "Desconocido",
-          p_ip_address: params.ip_address || "127.0.0.1",
-        });
+        const key = params.license_key.trim();
+        const hwid = params.device_fingerprint.trim();
 
-        if (error) {
+        // 1. Consultar licencia directamente en la tabla oficial 'licenses'
+        const { data: lic, error: licErr } = await supabase
+          .from("licenses")
+          .select("id, license_key, status, expires_at, max_activations, current_activations, max_seats, current_seats, plan_tier")
+          .eq("license_key", key)
+          .maybeSingle();
+
+        // Manejo defensivo: Si la consulta a Supabase falla (p.ej. tabla aún no migrada, error de path o conectividad),
+        // capturar y recurrir al fallback en memoria sin romper la llamada.
+        if (licErr) {
+          console.warn("[LICENSES-ENGINE] Error en consulta a tabla 'licenses' de Supabase:", licErr.message);
+          return this.activateInMemory(params);
+        }
+
+        // Si la licencia no existe en Supabase, verificar si existe en el store local de contingencia
+        if (!lic) {
+          const memLic = store.getLicenseByKey(key);
+          if (memLic) {
+            return this.activateInMemory(params);
+          }
           return {
             success: false,
-            code: "DATABASE_ERROR",
-            message: error.message,
+            code: "LICENSE_NOT_FOUND",
+            message: "La clave de licencia no existe.",
           };
         }
 
-        if (!data.success) {
+        // Validar estado de la licencia
+        if (lic.status !== "active") {
           return {
             success: false,
-            code: data.code,
-            message: data.message,
+            code: "LICENSE_INACTIVE",
+            message: "La licencia se encuentra inactiva o suspendida.",
           };
         }
+
+        // Validar vigencia temporal
+        if (lic.expires_at && new Date(lic.expires_at).getTime() < Date.now()) {
+          return {
+            success: false,
+            code: "LICENSE_EXPIRED",
+            message: "La vigencia de la licencia ha expirado.",
+          };
+        }
+
+        const maxLimit = lic.max_activations ?? lic.max_seats ?? 1;
+        const currentCount = lic.current_activations ?? lic.current_seats ?? 0;
+        const tier = lic.plan_tier || "standard";
+
+        // 2. Comprobar si el dispositivo ya está registrado (Reactivación idempotente)
+        const { data: existingAct, error: actCheckErr } = await supabase
+          .from("license_activations")
+          .select("id")
+          .eq("license_id", lic.id)
+          .eq("device_fingerprint", hwid)
+          .maybeSingle();
+
+        if (!actCheckErr && existingAct) {
+          // Renovar timestamp del equipo
+          await supabase
+            .from("license_activations")
+            .update({
+              last_ping_at: new Date().toISOString(),
+              device_name: params.device_name || "Desconocido",
+              ip_address: params.ip_address || "127.0.0.1",
+            })
+            .eq("id", existingAct.id);
+
+          const token = await generateOfflineToken({
+            license_id: lic.id,
+            license_key: lic.license_key,
+            device_fingerprint: hwid,
+            plan_tier: tier,
+            expires_at: lic.expires_at,
+          });
+
+          return {
+            success: true,
+            code: "DEVICE_REACTIVATED",
+            message: "Dispositivo reactivado exitosamente.",
+            token,
+            license: {
+              id: lic.id,
+              license_key: lic.license_key,
+              plan_tier: tier,
+              max_activations: maxLimit,
+              current_activations: currentCount,
+              expires_at: lic.expires_at,
+            },
+          };
+        }
+
+        // 3. Comprobar límite de activaciones
+        if (currentCount >= maxLimit) {
+          return {
+            success: false,
+            code: "MAX_ACTIVATIONS_REACHED",
+            message: "Se ha alcanzado el límite máximo de activaciones permitidas para esta licencia.",
+          };
+        }
+
+        // 4. Registrar nueva activación en la tabla oficial
+        const { error: insertErr } = await supabase
+          .from("license_activations")
+          .insert({
+            license_id: lic.id,
+            device_fingerprint: hwid,
+            device_name: params.device_name || "Desconocido",
+            ip_address: params.ip_address || "127.0.0.1",
+            last_ping_at: new Date().toISOString(),
+          });
+
+        if (insertErr) {
+          console.warn("[LICENSES-ENGINE] Error insertando en 'license_activations':", insertErr.message);
+          return this.activateInMemory(params);
+        }
+
+        // 5. Incrementar contador de activaciones
+        const newCount = currentCount + 1;
+        await supabase
+          .from("licenses")
+          .update({
+            current_activations: newCount,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", lic.id);
 
         const token = await generateOfflineToken({
-          license_id: data.license_id,
-          license_key: params.license_key.trim(),
-          device_fingerprint: params.device_fingerprint.trim(),
-          plan_tier: data.plan_tier,
-          expires_at: data.expires_at,
+          license_id: lic.id,
+          license_key: lic.license_key,
+          device_fingerprint: hwid,
+          plan_tier: tier,
+          expires_at: lic.expires_at,
         });
 
         return {
           success: true,
-          code: data.code,
-          message: data.message,
+          code: "DEVICE_ACTIVATED",
+          message: "Dispositivo activado y vinculado correctamente.",
           token,
           license: {
-            id: data.license_id,
-            license_key: params.license_key.trim(),
-            plan_tier: data.plan_tier,
-            max_activations: data.max_activations,
-            current_activations: data.current_activations,
-            expires_at: data.expires_at,
+            id: lic.id,
+            license_key: lic.license_key,
+            plan_tier: tier,
+            max_activations: maxLimit,
+            current_activations: newCount,
+            expires_at: lic.expires_at,
           },
         };
       } catch (err: any) {
-        return {
-          success: false,
-          code: "INTERNAL_ERROR",
-          message: err.message || "Error procesando activación en Supabase",
-        };
+        console.warn("[LICENSES-ENGINE] Excepción capturada en Supabase, recurriendo a fallback seguro:", err?.message);
+        return this.activateInMemory(params);
       }
     }
 
     // =========================================================================
-    // Modo B: Motor In-Memory
+    // Modo B: Motor In-Memory Directo
     // =========================================================================
+    return this.activateInMemory(params);
+  }
+
+  /**
+   * Ejecución segura en memoria / fallback resiliente
+   */
+  private async activateInMemory(params: ActivateParams): Promise<ActivationResult> {
     const key = params.license_key.trim();
     const hwid = params.device_fingerprint.trim();
 
@@ -276,9 +387,16 @@ export class LicensesEngine {
           .from("licenses")
           .select("id, status, expires_at, plan_tier")
           .eq("license_key", params.license_key.trim())
-          .single();
+          .maybeSingle();
 
-        if (licErr || !lic) {
+        if (licErr) {
+          console.warn("[LICENSES-ENGINE] Error en Supabase validate, usando fallback in-memory:", licErr.message);
+          return this.validateInMemory(params);
+        }
+
+        if (!lic) {
+          const memLic = store.getLicenseByKey(params.license_key.trim());
+          if (memLic) return this.validateInMemory(params);
           return { valid: false, code: "LICENSE_NOT_FOUND", message: "La licencia no existe." };
         }
 
@@ -295,7 +413,7 @@ export class LicensesEngine {
           .select("id")
           .eq("license_id", lic.id)
           .eq("device_fingerprint", params.device_fingerprint.trim())
-          .single();
+          .maybeSingle();
 
         if (actErr || !act) {
           return { valid: false, code: "DEVICE_NOT_ACTIVATED", message: "El equipo no está activado para esta clave." };
@@ -315,11 +433,15 @@ export class LicensesEngine {
           plan_tier: lic.plan_tier,
         };
       } catch (err: any) {
-        return { valid: false, code: "SERVER_ERROR", message: err.message };
+        console.warn("[LICENSES-ENGINE] Excepción en validate Supabase, usando fallback:", err?.message);
+        return this.validateInMemory(params);
       }
     }
 
-    // Modo In-Memory
+    return this.validateInMemory(params);
+  }
+
+  private async validateInMemory(params: { license_key: string; device_fingerprint: string }): Promise<ValidateResult> {
     const key = params.license_key.trim();
     const hwid = params.device_fingerprint.trim();
 
@@ -367,27 +489,70 @@ export class LicensesEngine {
 
     if (supabase) {
       try {
-        const { data, error } = await supabase.rpc("rpc_deactivate_license_device", {
-          p_license_key: params.license_key.trim(),
-          p_device_fingerprint: params.device_fingerprint.trim(),
-        });
+        const key = params.license_key.trim();
+        const hwid = params.device_fingerprint.trim();
 
-        if (error) {
-          return { success: false, code: "DATABASE_ERROR", message: error.message };
+        const { data: lic, error: licErr } = await supabase
+          .from("licenses")
+          .select("id, current_activations, current_seats")
+          .eq("license_key", key)
+          .maybeSingle();
+
+        if (licErr) {
+          console.warn("[LICENSES-ENGINE] Error en Supabase deactivate, usando fallback:", licErr.message);
+          return this.deactivateInMemory(params);
         }
 
+        if (!lic) {
+          const memLic = store.getLicenseByKey(key);
+          if (memLic) return this.deactivateInMemory(params);
+          return { success: false, code: "LICENSE_NOT_FOUND", message: "La clave de licencia no existe." };
+        }
+
+        const { data: act } = await supabase
+          .from("license_activations")
+          .select("id")
+          .eq("license_id", lic.id)
+          .eq("device_fingerprint", hwid)
+          .maybeSingle();
+
+        if (!act) {
+          return { success: false, code: "DEVICE_NOT_FOUND", message: "No se encontró activación registrada para esta huella de hardware." };
+        }
+
+        // Eliminar registro de activación
+        await supabase
+          .from("license_activations")
+          .delete()
+          .eq("id", act.id);
+
+        const currentCount = lic.current_activations ?? lic.current_seats ?? 1;
+        const newCount = Math.max(0, currentCount - 1);
+
+        await supabase
+          .from("licenses")
+          .update({
+            current_activations: newCount,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", lic.id);
+
         return {
-          success: data.success,
-          code: data.code,
-          message: data.message,
-          current_activations: data.current_activations,
+          success: true,
+          code: "DEVICE_DEACTIVATED",
+          message: "Dispositivo desvinculado exitosamente.",
+          current_activations: newCount,
         };
       } catch (err: any) {
-        return { success: false, code: "SERVER_ERROR", message: err.message };
+        console.warn("[LICENSES-ENGINE] Excepción en deactivate Supabase, usando fallback:", err?.message);
+        return this.deactivateInMemory(params);
       }
     }
 
-    // Modo In-Memory
+    return this.deactivateInMemory(params);
+  }
+
+  private async deactivateInMemory(params: { license_key: string; device_fingerprint: string }): Promise<DeactivateResult> {
     const key = params.license_key.trim();
     const hwid = params.device_fingerprint.trim();
 

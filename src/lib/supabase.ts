@@ -82,9 +82,13 @@ export function extractSupabaseUrlFromDatabaseUrl(dbUrl: string): string | null 
  * 2. SUPABASE_ANON_KEY / NEXT_PUBLIC_SUPABASE_ANON_KEY
  */
 export function getDatabaseConfig(): DatabaseConfig {
+  const rawDirect = process.env.SUPABASE_URL || "";
+  const rawPublic = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
   const databaseUrl = process.env.DATABASE_URL || null;
-  const directUrl = process.env.SUPABASE_URL || null;
-  const publicUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || null;
+
+  // Sanitizar explícitamente para que nunca termine con barra diagonal (ej: replace(/\/+$/, ''))
+  const directUrl = rawDirect.trim().replace(/\/+$/, "");
+  const publicUrl = rawPublic.trim().replace(/\/+$/, "");
 
   const key =
     process.env.SUPABASE_SERVICE_ROLE_KEY ||
@@ -95,18 +99,23 @@ export function getDatabaseConfig(): DatabaseConfig {
   let url: string | null = null;
   let source: DatabaseConfig["source"] = "none";
 
-  if (directUrl && directUrl.trim().length > 0) {
-    url = directUrl.trim().replace(/\/$/, "");
+  if (directUrl.length > 0) {
+    url = directUrl;
     source = "SUPABASE_URL";
-  } else if (publicUrl && publicUrl.trim().length > 0) {
-    url = publicUrl.trim().replace(/\/$/, "");
+  } else if (publicUrl.length > 0) {
+    url = publicUrl;
     source = "NEXT_PUBLIC_SUPABASE_URL";
   } else if (databaseUrl && databaseUrl.trim().length > 0) {
     const extracted = extractSupabaseUrlFromDatabaseUrl(databaseUrl);
     if (extracted) {
-      url = extracted;
+      url = extracted.replace(/\/+$/, "");
       source = "DATABASE_URL";
     }
+  }
+
+  // Garantizar sanitización final sin barras diagonales al final
+  if (url) {
+    url = url.trim().replace(/\/+$/, "");
   }
 
   const isConfigured = Boolean(url && key);
@@ -131,13 +140,24 @@ export function getSupabaseClient(): SupabaseClient | null {
     return null;
   }
 
-  const cacheKey = `${config.url}::${config.key}`;
+  const cleanUrl = config.url.trim().replace(/\/+$/, "");
+  const cacheKey = `${cleanUrl}::${config.key}`;
   if (cachedClient && cachedClientKey === cacheKey) {
     return cachedClient;
   }
 
   try {
-    cachedClient = createClient(config.url, config.key, {
+    // Evitar que RealtimeClient falle en Node.js < 22 si WebSocket global no está definido
+    if (typeof globalThis !== "undefined" && typeof (globalThis as any).WebSocket === "undefined") {
+      (globalThis as any).WebSocket = class StubWebSocket {
+        static CLOSED = 3;
+        readyState = 3;
+        close() {}
+        send() {}
+      };
+    }
+
+    cachedClient = createClient(cleanUrl, config.key, {
       auth: {
         persistSession: false,
         autoRefreshToken: false,
