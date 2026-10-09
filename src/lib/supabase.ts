@@ -215,9 +215,6 @@ export function getSupabaseClient(): SupabaseClient | null {
       };
     }
 
-    console.log("[DEBUG SUPABASE URL]:", JSON.stringify(cleanUrl));
-    console.log("[DEBUG KEY LENGTH]:", config.key ? config.key.length : 0);
-
     cachedClient = createClient(cleanUrl, config.key, {
       auth: {
         persistSession: false,
