@@ -98,16 +98,17 @@ describe("Smoke Tests: Verificación de Puesta en Marcha y Observabilidad", () =
       expect(urlHttp).toBe("https://direct-api.supabase.co");
     });
 
-    it("Sanitiza SUPABASE_URL eliminando barras diagonales al final (trailing slashes)", () => {
+    it("Sanitiza SUPABASE_URL eliminando barras diagonales al final, comillas y sufijos de ruta", () => {
       const originalDirect = process.env.SUPABASE_URL;
       const originalKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
       try {
-        process.env.SUPABASE_URL = "https://prod-db.supabase.co///";
-        process.env.SUPABASE_SERVICE_ROLE_KEY = "test-role-key-123";
+        process.env.SUPABASE_URL = ' "https://prod-db.supabase.co/rest/v1///" \n';
+        process.env.SUPABASE_SERVICE_ROLE_KEY = ' "test-role-key-123" ';
 
         const config = getDatabaseConfig();
         expect(config.url).toBe("https://prod-db.supabase.co");
+        expect(config.key).toBe("test-role-key-123");
       } finally {
         if (originalDirect) process.env.SUPABASE_URL = originalDirect;
         else delete process.env.SUPABASE_URL;

@@ -12,6 +12,52 @@ let cachedClient: SupabaseClient | null = null;
 let cachedClientKey: string | null = null;
 
 /**
+ * Sanitiza exhaustivamente la URL de Supabase para cumplir:
+ * 1. Comenzar estrictamente con 'https://'
+ * 2. Sin comillas escapadas (\", \'), comillas simples, dobles o backticks
+ * 3. Sin espacios ocultos, saltos de línea (\r, \n, \t)
+ * 4. Sin sufijos de ruta como /rest/v1, /auth/v1 ni barras finales
+ */
+export function sanitizeSupabaseUrl(rawUrl: string | null | undefined): string | null {
+  if (!rawUrl || typeof rawUrl !== "string") return null;
+
+  // 1. Eliminar comillas escapadas, comillas simples, dobles, backticks, saltos de línea y espacios ocultos
+  let cleaned = rawUrl
+    .replace(/\\"/g, "")
+    .replace(/\\'/g, "")
+    .replace(/["'`]/g, "")
+    .replace(/[\r\n\t]/g, "")
+    .trim();
+
+  if (!cleaned) return null;
+
+  // 2. Si comienza con http://, forzar https://. Si no tiene protocolo, anteponer https://
+  if (cleaned.startsWith("http://")) {
+    cleaned = "https://" + cleaned.slice(7);
+  } else if (!cleaned.startsWith("https://")) {
+    cleaned = "https://" + cleaned.replace(/^\/+/, "");
+  }
+
+  // 3. Eliminar sufijos de ruta (/rest/v1, /auth/v1, rutas adicionales o trailing slashes)
+  try {
+    const parsed = new URL(cleaned);
+    // parsed.host contiene estrictamente hostname (+ puerto si existiese)
+    cleaned = `https://${parsed.host}`;
+  } catch {
+    // Fallback si URL() fallara por caracteres residuales
+    cleaned = cleaned.replace(/^(https:\/\/[^\/\s]+).*$/, "$1");
+  }
+
+  // 4. Garantizar estrictamente que inicie con 'https://' y no tenga sufijos ni barras finales
+  cleaned = cleaned.replace(/\/+$/, "");
+  if (!cleaned.startsWith("https://")) {
+    cleaned = `https://${cleaned.replace(/^https?:\/\//, "")}`;
+  }
+
+  return cleaned;
+}
+
+/**
  * Extrae la URL REST de Supabase a partir de un string de conexión PostgreSQL (DATABASE_URL)
  * o retorna la misma si ya es un endpoint HTTP/HTTPS.
  *
@@ -23,11 +69,15 @@ let cachedClientKey: string | null = null;
 export function extractSupabaseUrlFromDatabaseUrl(dbUrl: string): string | null {
   if (!dbUrl || typeof dbUrl !== "string") return null;
 
-  const trimmed = dbUrl.trim();
+  const trimmed = dbUrl
+    .replace(/\\"/g, "")
+    .replace(/\\'/g, "")
+    .replace(/["'`]/g, "")
+    .trim();
 
   // 1. Si ya es una URL HTTP/HTTPS
   if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
-    return trimmed.replace(/\/$/, "");
+    return sanitizeSupabaseUrl(trimmed);
   }
 
   // 2. Extracción mediante parser estándar de URL
@@ -86,36 +136,39 @@ export function getDatabaseConfig(): DatabaseConfig {
   const rawPublic = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
   const databaseUrl = process.env.DATABASE_URL || null;
 
-  // Sanitizar explícitamente para que nunca termine con barra diagonal (ej: replace(/\/+$/, ''))
-  const directUrl = rawDirect.trim().replace(/\/+$/, "");
-  const publicUrl = rawPublic.trim().replace(/\/+$/, "");
+  const directUrl = sanitizeSupabaseUrl(rawDirect);
+  const publicUrl = sanitizeSupabaseUrl(rawPublic);
 
-  const key =
+  const rawKey =
     process.env.SUPABASE_SERVICE_ROLE_KEY ||
     process.env.SUPABASE_ANON_KEY ||
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
     null;
 
+  const key = rawKey
+    ? rawKey
+        .replace(/\\"/g, "")
+        .replace(/\\'/g, "")
+        .replace(/["'`]/g, "")
+        .replace(/[\r\n\t\s]/g, "")
+        .trim()
+    : null;
+
   let url: string | null = null;
   let source: DatabaseConfig["source"] = "none";
 
-  if (directUrl.length > 0) {
+  if (directUrl) {
     url = directUrl;
     source = "SUPABASE_URL";
-  } else if (publicUrl.length > 0) {
+  } else if (publicUrl) {
     url = publicUrl;
     source = "NEXT_PUBLIC_SUPABASE_URL";
   } else if (databaseUrl && databaseUrl.trim().length > 0) {
     const extracted = extractSupabaseUrlFromDatabaseUrl(databaseUrl);
     if (extracted) {
-      url = extracted.replace(/\/+$/, "");
+      url = sanitizeSupabaseUrl(extracted);
       source = "DATABASE_URL";
     }
-  }
-
-  // Garantizar sanitización final sin barras diagonales al final
-  if (url) {
-    url = url.trim().replace(/\/+$/, "");
   }
 
   const isConfigured = Boolean(url && key);
@@ -140,7 +193,7 @@ export function getSupabaseClient(): SupabaseClient | null {
     return null;
   }
 
-  const cleanUrl = config.url.trim().replace(/\/+$/, "");
+  const cleanUrl = sanitizeSupabaseUrl(config.url) || config.url;
   const cacheKey = `${cleanUrl}::${config.key}`;
   if (cachedClient && cachedClientKey === cacheKey) {
     return cachedClient;
@@ -156,6 +209,9 @@ export function getSupabaseClient(): SupabaseClient | null {
         send() {}
       };
     }
+
+    console.log("[DEBUG SUPABASE URL]:", JSON.stringify(cleanUrl));
+    console.log("[DEBUG KEY LENGTH]:", config.key ? config.key.length : 0);
 
     cachedClient = createClient(cleanUrl, config.key, {
       auth: {
