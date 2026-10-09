@@ -27,6 +27,9 @@ ENV NODE_ENV=production
 ENV NEXT_PUBLIC_SUPABASE_URL=https://placeholder.supabase.co
 ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=placeholder
 
+# Limitar memoria de Node para prevenir saturación y cuelgues en contenedores
+ENV NODE_OPTIONS="--max-old-space-size=1024"
+
 # Compilación estricta sin pruebas ni llamadas externas
 RUN npm run build
 
