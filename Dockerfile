@@ -4,14 +4,13 @@
 
 # 1. Base Image
 FROM node:20-alpine AS base
-RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
 # 2. Stage Dependencies
 FROM base AS deps
 WORKDIR /app
 COPY package.json package-lock.json* ./
-RUN npm ci
+RUN npm ci --prefer-offline --no-audit
 
 # 3. Stage Builder
 FROM base AS builder
@@ -19,19 +18,14 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Deshabilitar telemetría de Next.js durante la compilación
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
-
-# Variables dummy para el paso de compilación estática (next build)
 ENV NEXT_PUBLIC_SUPABASE_URL=https://placeholder.supabase.co
 ENV NEXT_PUBLIC_SUPABASE_ANON_KEY=placeholder
 
-# Limitar memoria de Node para prevenir saturación y cuelgues en contenedores
-ENV NODE_OPTIONS="--max-old-space-size=1024"
-
-# Compilación estricta sin pruebas ni llamadas externas
-RUN npm run build
+# Forzar 1 solo worker para evitar cuelgues de CPU en contenedores gratuitos
+ENV NEXT_MANUAL_SIG_HANDLE=true
+RUN npx next build --no-lint
 
 # 4. Stage Runner (Lightweight Production Image)
 FROM node:20-alpine AS runner
