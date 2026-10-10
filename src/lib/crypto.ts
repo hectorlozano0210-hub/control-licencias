@@ -41,7 +41,7 @@ export function validateKeyChecksum(licenseKey: string): boolean {
  * PROD-ENT-XXXX-XXXX-XXXX-XXXX
  */
 export function generateCryptographicLicenseKey(
-  prefix: "PROD" | "TRIAL" | "DEV" = "PROD",
+  prefix: string = "PROD",
   tier: "STD" | "PRO" | "ENT" = "PRO"
 ): string {
   const alphabet = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ"; // Crockford Base32 (sin 0, 1, I, O para legibilidad)

@@ -33,6 +33,9 @@ export function SimulatorView({
   apps,
   onTriggerRefresh,
 }: SimulatorViewProps) {
+  const [serverUrl, setServerUrl] = useState<string>(
+    "https://api-control-licencias.onrender.com"
+  );
   const [selectedLicenseKey, setSelectedLicenseKey] = useState<string>(
     licenses[0]?.license_key || ""
   );
@@ -112,8 +115,13 @@ export function SimulatorView({
     }
   };
 
+  const resolveUrl = (path: string) => {
+    if (!serverUrl || serverUrl === "/") return path;
+    return `${serverUrl.replace(/\/$/, "")}${path}`;
+  };
+
   const handleActivate = () => {
-    runApiCall("/api/licenses/activate", "activate", {
+    runApiCall(resolveUrl("/api/licenses/activate"), "activate", {
       license_key: selectedLicenseKey,
       device_fingerprint: machineFingerprint,
       device_name: deviceName,
@@ -121,18 +129,16 @@ export function SimulatorView({
   };
 
   const handleVerify = () => {
-    runApiCall("/api/v1/license/verify", "verify", {
+    runApiCall(resolveUrl("/api/licenses/validate"), "verify", {
       license_key: selectedLicenseKey,
-      app_slug: selectedAppSlug,
-      machine_fingerprint: machineFingerprint,
-      app_version: appVersion,
+      device_fingerprint: machineFingerprint,
     });
   };
 
   const handleHeartbeat = () => {
-    runApiCall("/api/v1/license/heartbeat", "heartbeat", {
+    runApiCall(resolveUrl("/api/licenses/validate"), "heartbeat", {
       license_key: selectedLicenseKey,
-      machine_fingerprint: machineFingerprint,
+      device_fingerprint: machineFingerprint,
     });
   };
 
@@ -178,6 +184,21 @@ export function SimulatorView({
               <Cpu className="w-4 h-4 text-cyan-400" />
               Parámetros de la Máquina Cliente
             </h2>
+
+            {/* Servidor Endpoint URL */}
+            <div>
+              <label className="block text-[11px] font-semibold text-zinc-400 uppercase mb-1 flex items-center justify-between">
+                <span>Servidor de Licencias</span>
+                <span className="text-[10px] text-cyan-400 font-semibold">Oficial Render</span>
+              </label>
+              <input
+                type="text"
+                value={serverUrl}
+                onChange={(e) => setServerUrl(e.target.value)}
+                placeholder="https://api-control-licencias.onrender.com"
+                className="w-full px-3 py-2 rounded-xl bg-black/50 border border-white/10 text-cyan-300 font-mono text-xs focus:outline-none focus:border-cyan-500/50"
+              />
+            </div>
 
             {/* Quick Picker from existing licenses */}
             <div>

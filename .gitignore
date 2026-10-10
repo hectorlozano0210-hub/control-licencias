@@ -6,3 +6,7 @@ build/
 .env.local
 .env.production
 *.log
+
+.agents/
+skills/
+mcp_config.json

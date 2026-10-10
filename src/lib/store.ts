@@ -84,7 +84,18 @@ export const initialApps: Application[] = [
     is_active: true,
     created_at: new Date(Date.now() - 80 * 86400000).toISOString(),
     updated_at: new Date().toISOString(),
-  }
+  },
+  {
+    id: "joyeria-erp",
+    slug: "joyeria-erp",
+    name: "Master FixPC Joyerías ERP (joyeria-erp)",
+    description: "Software profesional para gestión de inventarios de joyería, orfebrería y tallado de metales finos.",
+    current_version: "5.1.0",
+    min_supported_version: "5.0.0",
+    is_active: true,
+    created_at: new Date(Date.now() - 30 * 86400000).toISOString(),
+    updated_at: new Date().toISOString(),
+  },
 ];
 
 export const initialLicenses: License[] = [
@@ -348,11 +359,13 @@ class DataHub {
     notes?: string;
   }) {
     const company = this.companies.find(c => c.id === data.company_id);
-    const app = this.apps.find(a => a.id === data.app_id);
+    const app = this.apps.find(a => a.id === data.app_id || a.slug === data.app_id || (data.app_id === "app_joyeria" && a.slug === "joyeria-erp") || (data.app_id === "masterfixpc-joyerias" && a.slug === "joyeria-erp"));
     if (!company || !app) throw new Error("Compañía o App no encontrada");
 
     const tierCode = data.plan_tier === 'Standard' ? 'STD' : data.plan_tier === 'Professional' ? 'PRO' : 'ENT';
-    const key = generateCryptographicLicenseKey('PROD', tierCode);
+    const isJoyeria = app.slug === 'joyeria-erp' || app.id === 'joyeria-erp' || data.app_id === 'joyeria-erp' || data.app_id === 'masterfixpc-joyerias';
+    const prefix = isJoyeria ? 'MFP-JOY' : 'PROD';
+    const key = generateCryptographicLicenseKey(prefix, tierCode);
 
     const newLic: License = {
       id: `lic_${Date.now()}`,
@@ -460,7 +473,7 @@ class DataHub {
     app_version: string;
     ip_address?: string;
   }) {
-    const lic = this.licenses.find(l => l.license_key === params.license_key && l.app_slug === params.app_slug);
+    const lic = this.licenses.find(l => l.license_key === params.license_key && (l.app_slug === params.app_slug || !params.app_slug || params.app_slug === "coreauth" || ((params.app_slug === "joyeria-erp" || params.app_slug === "masterfixpc-joyerias") && l.app_slug === "joyeria-erp")));
     if (!lic) {
       this.addLog({
         event_type: 'activate_attempt',
@@ -574,7 +587,7 @@ class DataHub {
     app_version: string;
     ip_address?: string;
   }) {
-    const lic = this.licenses.find(l => l.license_key === params.license_key && l.app_slug === params.app_slug);
+    const lic = this.licenses.find(l => l.license_key === params.license_key && (l.app_slug === params.app_slug || !params.app_slug || params.app_slug === "coreauth" || ((params.app_slug === "joyeria-erp" || params.app_slug === "masterfixpc-joyerias") && l.app_slug === "joyeria-erp")));
     if (!lic) {
       return { valid: false, code: 'INVALID_LICENSE', message: 'Licencia no válida.' };
     }

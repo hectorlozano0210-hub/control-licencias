@@ -72,6 +72,25 @@ export function LicenseManagerView({
     companies[0]?.id || ""
   );
   const [selectedAppId, setSelectedAppId] = useState<string>(apps[0]?.id || "");
+
+  // Catálogo completo de aplicaciones garantizando Master FixPC Joyerías ERP
+  const allApps = useMemo(() => {
+    const list = [...apps];
+    if (!list.some((a) => a.id === "joyeria-erp" || a.slug === "joyeria-erp")) {
+      list.push({
+        id: "joyeria-erp",
+        slug: "joyeria-erp",
+        name: "Master FixPC Joyerías ERP (joyeria-erp)",
+        description: "Software profesional para gestión de inventarios de joyería y orfebrería.",
+        current_version: "5.1.0",
+        min_supported_version: "5.0.0",
+        is_active: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      });
+    }
+    return list;
+  }, [apps]);
   const [selectedTier, setSelectedTier] = useState<"Standard" | "Professional" | "Enterprise">(
     "Enterprise"
   );
@@ -210,7 +229,7 @@ export function LicenseManagerView({
             className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-zinc-200 text-xs focus:outline-none focus:border-violet-500/50"
           >
             <option value="all">Todas las Aplicaciones</option>
-            {apps.map((app) => (
+            {allApps.map((app) => (
               <option key={app.id} value={app.id}>
                 {app.name}
               </option>
@@ -630,9 +649,9 @@ export function LicenseManagerView({
                     required
                     className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-white focus:outline-none focus:border-violet-500/50"
                   >
-                    {apps.map((app) => (
+                    {allApps.map((app) => (
                       <option key={app.id} value={app.id}>
-                        {app.name} ({app.slug})
+                        {app.name.includes(`(${app.slug})`) ? app.name : `${app.name} (${app.slug})`}
                       </option>
                     ))}
                   </select>

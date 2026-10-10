@@ -25,39 +25,35 @@ export function SdkDocsView() {
     setTimeout(() => setCopiedTab(null), 2000);
   };
 
-  const nodeCode = `// 1. Instalar dependencias en tu proyecto Electron / Node:
-// npm install crypto os
+  const nodeCode = `// 1. Integración en tu proyecto React / Next.js / Electron / Node:
+import { CoreAuthClient } from "@/lib/sdk/client-sdk";
 
-import { CoreAuthClient } from "./lib/sdk/client-sdk";
-
-// Inicializar el SDK para tu aplicación
+// Inicializar el cliente (por defecto apunta a Render en producción)
 const licenseClient = new CoreAuthClient({
-  apiUrl: "https://tudominio.com/api/v1",
-  appSlug: "control-horarios",
-  appVersion: "2.4.0",
-  cacheFilePath: "./license_cache.dat" // Token cifrado para soporte offline
+  serverUrl: "https://api-control-licencias.onrender.com",
+  appSlug: "mi-software-pro",
+  appVersion: "1.0.0",
 });
 
 async function main() {
-  const licenseKey = "PROD-ENT-8F12-9A4B-3C2D-1E7F";
+  const licenseKey = "PROD-PRO-XXXX-XXXX-XXXX-XXXX";
 
   console.log("Activando equipo...");
   const activation = await licenseClient.activate(licenseKey, "WORKSTATION-MAIN");
 
   if (!activation.success) {
-    console.error("Error al activar:", activation.error);
+    console.error("Error al activar:", activation.message);
+    // Errores tipados: 'MAX_ACTIVATIONS_REACHED', 'LICENSE_NOT_FOUND', etc.
     return;
   }
 
-  console.log("¡Activación exitosa! Cupos:", activation.license.max_seats);
+  console.log("¡Activación exitosa! Plan:", activation.license?.planTier);
+  console.log("Vigencia Offline hasta:", activation.offline_valid_until);
 
-  // Iniciar heartbeats automáticos cada 5 minutos
-  licenseClient.startAutoHeartbeat(5);
-
-  // Verificar estado y alertas de expiración
+  // Verificar estado (permite operar offline mientras offline_valid_until no expire)
   const check = await licenseClient.verify();
-  if (check.alerts?.show_alert) {
-    console.warn("ALERTA DE LICENCIA:", check.alerts.message);
+  if (check.valid) {
+    console.log("Software habilitado para ejecutar:", check.message);
   }
 }
 
@@ -65,69 +61,64 @@ main();`;
 
   const pythonCode = `import requests
 import hashlib
-import uuid
 import platform
-import json
+import uuid
 
-API_BASE = "https://tudominio.com/api/v1"
-APP_SLUG = "control-horarios"
-APP_VERSION = "2.4.0"
+API_BASE = "https://api-control-licencias.onrender.com/api/licenses"
 
 def get_hwid():
-    """Genera huella SHA-256 única del procesador y tarjeta madre"""
+    """Genera huella SHA-256 única y persistente del hardware"""
     node_id = str(uuid.getnode())
     system_data = f"{platform.node()}-{platform.processor()}-{node_id}"
-    return hashlib.sha256(system_data.encode()).hexdigest()
+    return f"hw_{hashlib.sha256(system_data.encode()).hexdigest()[:16]}"
 
 def activate_license(license_key):
     hwid = get_hwid()
     payload = {
         "license_key": license_key,
-        "app_slug": APP_SLUG,
-        "machine_fingerprint": hwid,
-        "device_name": platform.node(),
-        "os_info": f"{platform.system()} {platform.release()}",
-        "app_version": APP_VERSION
+        "device_fingerprint": hwid,
+        "device_name": platform.node()
     }
     
-    resp = requests.post(f"{API_BASE}/license/activate", json=payload)
+    resp = requests.post(f"{API_BASE}/activate", json=payload)
     data = resp.json()
     
     if data.get("success"):
         print("✓ Software activado correctamente!")
-        print(f"Token Offline: {data.get('offline_token')[:32]}...")
+        print(f"Token JWT firmado: {data.get('token')[:32]}...")
+        print(f"Plan: {data.get('license', {}).get('plan_tier')}")
         return data
     else:
-        print(f"✗ Activación rechazada: {data.get('message')}")
+        print(f"✗ Activación rechazada [{data.get('code')}]: {data.get('message')}")
         return None
 
 # Ejemplo de uso:
 if __name__ == "__main__":
-    activate_license("PROD-ENT-8F12-9A4B-3C2D-1E7F")`;
+    activate_license("PROD-PRO-XXXX-XXXX-XXXX-XXXX")`;
 
-  const restCode = `# 1. ACTIVACIÓN DE EQUIPO (Descuenta 1 cupo y emite token offline)
-curl -X POST https://tudominio.com/api/licenses/activate \\
+  const restCode = `# 1. ACTIVACIÓN OFICIAL DE EQUIPO (Descuenta 1 cupo y emite token offline)
+curl -X POST https://api-control-licencias.onrender.com/api/licenses/activate \\
   -H "Content-Type: application/json" \\
   -d '{
-    "license_key": "PROD-ENT-8F12-9A4B-3C2D-1E7F",
-    "device_fingerprint": "hwid_e3b0c44298fc1c149afbf4c8996fb924",
-    "device_name": "TERMINAL-01"
+    "license_key": "PROD-PRO-XXXX-XXXX-XXXX-XXXX",
+    "device_fingerprint": "hw_7f8a9b0c1d2e3f4a",
+    "device_name": "PC-OFICINA-01"
   }'
 
 # 2. VALIDACIÓN PERIÓDICA / HEARTBEAT
-curl -X POST https://tudominio.com/api/licenses/validate \\
+curl -X POST https://api-control-licencias.onrender.com/api/licenses/validate \\
   -H "Content-Type: application/json" \\
   -d '{
-    "license_key": "PROD-ENT-8F12-9A4B-3C2D-1E7F",
-    "device_fingerprint": "hwid_e3b0c44298fc1c149afbf4c8996fb924"
+    "license_key": "PROD-PRO-XXXX-XXXX-XXXX-XXXX",
+    "device_fingerprint": "hw_7f8a9b0c1d2e3f4a"
   }'
 
-# 3. DESVINCULACIÓN / DESACTIVACIÓN (Libera el cupo)
-curl -X POST https://tudominio.com/api/licenses/deactivate \\
+# 3. DESVINCULACIÓN (Libera cupo para otro equipo)
+curl -X POST https://api-control-licencias.onrender.com/api/licenses/deactivate \\
   -H "Content-Type: application/json" \\
   -d '{
-    "license_key": "PROD-ENT-8F12-9A4B-3C2D-1E7F",
-    "device_fingerprint": "hwid_e3b0c44298fc1c149afbf4c8996fb924"
+    "license_key": "PROD-PRO-XXXX-XXXX-XXXX-XXXX",
+    "device_fingerprint": "hw_7f8a9b0c1d2e3f4a"
   }'`;
 
   const currentCode =
