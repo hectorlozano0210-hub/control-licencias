@@ -17,7 +17,7 @@ import {
   Users,
 } from "lucide-react";
 
-export type NavTab = "dashboard" | "clients" | "licenses" | "devices" | "telemetry" | "sdk" | "simulator";
+export type NavTab = "dashboard" | "apps" | "clients" | "licenses" | "devices" | "telemetry" | "sdk" | "simulator";
 
 interface SidebarProps {
   currentTab: NavTab;
@@ -27,6 +27,7 @@ interface SidebarProps {
   fraudAlertCount?: number;
   liveDevicesCount?: number;
   clientsCount?: number;
+  appsCount?: number;
 }
 
 export function Sidebar({
@@ -37,6 +38,7 @@ export function Sidebar({
   fraudAlertCount = 1,
   liveDevicesCount = 3,
   clientsCount,
+  appsCount,
 }: SidebarProps) {
   const navItems = [
     {
@@ -44,6 +46,13 @@ export function Sidebar({
       label: "Centro de Control",
       icon: Activity,
       badge: null,
+    },
+    {
+      id: "apps" as NavTab,
+      label: "Software & Apps",
+      icon: Layers,
+      badge: appsCount ? `${appsCount}` : null,
+      badgeColor: "bg-violet-500/20 text-violet-300 border-violet-500/30",
     },
     {
       id: "clients" as NavTab,

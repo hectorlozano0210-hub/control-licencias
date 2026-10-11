@@ -8,6 +8,7 @@ import { ClientsView } from "@/components/ClientsView";
 import { ClientDetailDrawer } from "@/components/ClientDetailDrawer";
 import { ManualPaymentModal } from "@/components/ManualPaymentModal";
 import { LicenseManagerView } from "@/components/LicenseManagerView";
+import { ApplicationsView } from "@/components/ApplicationsView";
 import { DeviceManagerView } from "@/components/DeviceManagerView";
 import { TelemetryView } from "@/components/TelemetryView";
 import { SimulatorView } from "@/components/SimulatorView";
@@ -92,17 +93,19 @@ export default function Home() {
   const [selectedClientForDetail, setSelectedClientForDetail] = useState<CompanyWithStats | null>(null);
   const [isClientDetailOpen, setIsClientDetailOpen] = useState(false);
 
-  // Preselected company for new license
+  // Preselected company and app for new license
   const [licensePreselectedCompany, setLicensePreselectedCompany] = useState<string | undefined>(undefined);
+  const [licensePreselectedApp, setLicensePreselectedApp] = useState<string | undefined>(undefined);
 
   // Fetch / Sync with API
   const refreshData = useCallback(async () => {
     try {
       setIsLoading(true);
-      const [licRes, statsRes, clientsRes] = await Promise.all([
+      const [licRes, statsRes, clientsRes, appsRes] = await Promise.all([
         fetch("/api/v1/licenses"),
         fetch("/api/v1/stats"),
         fetch("/api/v1/clients"),
+        fetch("/api/v1/apps"),
       ]);
 
       if (licRes.ok) {
@@ -129,6 +132,13 @@ export default function Home() {
             );
             if (updated) setSelectedClientForDetail(updated);
           }
+        }
+      }
+
+      if (appsRes.ok) {
+        const appsData = await appsRes.json();
+        if (appsData.apps) {
+          setApps(appsData.apps);
         }
       }
     } catch (err) {
@@ -294,6 +304,7 @@ export default function Home() {
         fraudAlertCount={fraudAlertCount}
         liveDevicesCount={liveDevicesCount}
         clientsCount={clients.length}
+        appsCount={apps.length}
       />
 
       {/* Main Content Area */}
@@ -355,6 +366,19 @@ export default function Home() {
                 />
               )}
 
+              {currentTab === "apps" && (
+                <ApplicationsView
+                  apps={apps}
+                  licenses={licenses}
+                  onRefresh={refreshData}
+                  onOpenCreateLicenseForApp={(appId) => {
+                    setLicensePreselectedApp(appId);
+                    setCurrentTab("licenses");
+                    setIsOpenCreateModal(true);
+                  }}
+                />
+              )}
+
               {currentTab === "clients" && (
                 <ClientsView
                   clients={clients}
@@ -375,11 +399,17 @@ export default function Home() {
                   apps={apps}
                   onRefresh={refreshData}
                   isOpenCreateModal={isOpenCreateModal}
-                  onSetOpenCreateModal={setIsOpenCreateModal}
+                  onSetOpenCreateModal={(open) => {
+                    setIsOpenCreateModal(open);
+                    if (!open) {
+                      setLicensePreselectedApp(undefined);
+                    }
+                  }}
                   onExtendLicense={handleExtendLicense}
                   onUpdateStatus={handleUpdateStatus}
                   onCreateLicense={handleCreateLicense}
                   onOpenManualPayment={handleOpenManualPayment}
+                  preselectedAppId={licensePreselectedApp}
                 />
               )}
 

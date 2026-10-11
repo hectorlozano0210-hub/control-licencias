@@ -126,6 +126,28 @@ export const deviceActionSchema = z
   })
   .strict();
 
+// 9. Creación y Registro de Aplicaciones (Hardened)
+export const createAppSchema = z
+  .object({
+    name: z.string().min(2, "Nombre de aplicación requerido").max(128),
+    slug: z
+      .string()
+      .min(2, "Slug requerido (mínimo 2 caracteres)")
+      .max(64, "Slug máximo 64 caracteres")
+      .regex(/^[a-z0-9\-_]+$/, "El slug debe ser alfanumérico en minúsculas y guiones"),
+    license_prefix: z
+      .string()
+      .min(2, "Prefijo de licencia mínimo 2 caracteres")
+      .max(16, "Prefijo de licencia máximo 16 caracteres")
+      .regex(/^[A-Za-z0-9\-_]+$/, "El prefijo debe ser alfanumérico")
+      .optional(),
+    description: z.string().max(500).optional(),
+    current_version: z.string().max(32).default("1.0.0"),
+    min_supported_version: z.string().max(32).default("1.0.0"),
+    is_active: z.boolean().default(true),
+  })
+  .strict();
+
 /**
  * Función utilitaria para parsear y validar requests con Zod
  * Si falla, retorna una respuesta 400 Bad Request estructurada y limpia

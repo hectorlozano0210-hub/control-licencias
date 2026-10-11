@@ -35,6 +35,7 @@ export interface Application {
   id: string;
   slug: string;
   name: string;
+  license_prefix?: string;
   description?: string;
   app_secret_hash?: string;
   public_signing_key?: string;

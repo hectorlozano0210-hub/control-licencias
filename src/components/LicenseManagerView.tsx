@@ -47,6 +47,7 @@ interface LicenseManagerViewProps {
     customer_email?: string;
   }) => Promise<any>;
   onOpenManualPayment?: (companyId?: string, licenseId?: string) => void;
+  preselectedAppId?: string;
 }
 
 export function LicenseManagerView({
@@ -60,6 +61,7 @@ export function LicenseManagerView({
   onUpdateStatus,
   onCreateLicense,
   onOpenManualPayment,
+  preselectedAppId,
 }: LicenseManagerViewProps) {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -77,7 +79,15 @@ export function LicenseManagerView({
   const [customerEmail, setCustomerEmail] = useState<string>(
     companies[0]?.email || ""
   );
-  const [selectedAppId, setSelectedAppId] = useState<string>(apps[0]?.id || "");
+  const [selectedAppId, setSelectedAppId] = useState<string>(
+    preselectedAppId || apps[0]?.id || ""
+  );
+
+  useEffect(() => {
+    if (preselectedAppId) {
+      setSelectedAppId(preselectedAppId);
+    }
+  }, [preselectedAppId]);
 
   // Carga dinámica de clientes de Supabase al abrir el modal (SELECT id, company_name, tax_id FROM clients)
   useEffect(() => {

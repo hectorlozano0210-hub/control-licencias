@@ -333,6 +333,20 @@ class DataHub {
     });
   }
   getApps() { return this.apps; }
+  createApp(app: Omit<Application, 'created_at' | 'updated_at'> & { created_at?: string; updated_at?: string }) {
+    const existingIndex = this.apps.findIndex((a) => a.id === app.id || a.slug === app.slug);
+    const newApp: Application = {
+      ...app,
+      created_at: app.created_at || new Date().toISOString(),
+      updated_at: app.updated_at || new Date().toISOString(),
+    };
+    if (existingIndex >= 0) {
+      this.apps[existingIndex] = newApp;
+    } else {
+      this.apps.unshift(newApp);
+    }
+    return newApp;
+  }
   getLicenses() { return this.licenses; }
   getLicenseByKey(key: string) { return this.licenses.find((l) => l.license_key === key); }
   getDevices() { return this.devices; }
@@ -359,12 +373,25 @@ class DataHub {
     notes?: string;
   }) {
     const company = this.companies.find(c => c.id === data.company_id);
-    const app = this.apps.find(a => a.id === data.app_id || a.slug === data.app_id || (data.app_id === "app_joyeria" && a.slug === "joyeria-erp") || (data.app_id === "masterfixpc-joyerias" && a.slug === "joyeria-erp"));
+    let app = this.apps.find(a => a.id === data.app_id || a.slug === data.app_id || (data.app_id === "app_joyeria" && a.slug === "joyeria-erp") || (data.app_id === "masterfixpc-joyerias" && a.slug === "joyeria-erp"));
+    if (!app && data.app_id) {
+      app = {
+        id: data.app_id,
+        slug: data.app_id,
+        name: data.app_id,
+        current_version: "1.0.0",
+        min_supported_version: "1.0.0",
+        is_active: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      this.apps.unshift(app);
+    }
     if (!company || !app) throw new Error("Compañía o App no encontrada");
 
     const tierCode = data.plan_tier === 'Standard' ? 'STD' : data.plan_tier === 'Professional' ? 'PRO' : 'ENT';
     const isJoyeria = app.slug === 'joyeria-erp' || app.id === 'joyeria-erp' || data.app_id === 'joyeria-erp' || data.app_id === 'masterfixpc-joyerias';
-    const prefix = isJoyeria ? 'MFP-JOY' : 'PROD';
+    const prefix = (app.license_prefix || (isJoyeria ? 'MFP-JOY' : 'PROD')).toUpperCase();
     const key = generateCryptographicLicenseKey(prefix, tierCode);
 
     const newLic: License = {
