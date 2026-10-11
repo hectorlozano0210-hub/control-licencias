@@ -10,38 +10,71 @@ export async function GET() {
   try {
     const supabase = getSupabaseAdminClient();
     let dbLicenses: any[] = [];
+    let dbCompanies: any[] = [];
 
     if (supabase) {
       try {
-        const { data: supaLics, error: supaErr } = await supabase
-          .from("licenses")
-          .select("id, license_key, customer_id, customer_email, plan_tier, status, max_activations, current_activations, valid_from, expires_at");
+        const [supaLicsRes, supaClientsRes] = await Promise.all([
+          supabase
+            .from("licenses")
+            .select("id, license_key, customer_id, customer_email, plan_tier, status, max_activations, current_activations, valid_from, expires_at"),
+          supabase
+            .from("clients")
+            .select("id, company_name, tax_id, contact_name, contact_email, contact_phone, notes, created_at, updated_at")
+            .order("company_name", { ascending: true }),
+        ]);
 
-        if (supaErr) {
-          console.warn("[SUPABASE][GET_LICENSES_WARN] Error consultando tabla licenses:", supaErr.message);
-        } else if (supaLics) {
-          dbLicenses = supaLics.map((row: any) => ({
+        if (supaClientsRes.data) {
+          dbCompanies = supaClientsRes.data.map((row: any) => ({
             id: row.id,
-            license_key: row.license_key,
-            company_id: row.customer_id || "comp_01",
-            company_name: row.customer_email
-              ? `Cliente (${row.customer_email})`
-              : (row.license_key?.startsWith("MFP-JOY") ? "Master FixPC Joyerías S.A.S." : "Cliente Registrado"),
-            company_nit: "N/A",
-            app_id: row.license_key?.startsWith("MFP-JOY") ? "joyeria-erp" : "app_horarios",
-            app_slug: row.license_key?.startsWith("MFP-JOY") ? "joyeria-erp" : "control-horarios",
-            app_name: row.license_key?.startsWith("MFP-JOY") ? "Master FixPC Joyerías ERP (joyeria-erp)" : "Software Licenciado",
-            plan_tier: row.plan_tier?.toUpperCase() === "PRO" ? "Professional" : row.plan_tier?.toUpperCase() === "STD" ? "Standard" : "Enterprise",
-            max_seats: row.max_activations || 1,
-            current_seats: row.current_activations || 0,
-            status: row.status || "active",
-            issued_at: row.valid_from || new Date().toISOString(),
-            expires_at: row.expires_at || new Date(Date.now() + 365 * 86400000).toISOString(),
-            grace_period_days: 7,
-            auto_renew: false,
-            created_at: row.valid_from || new Date().toISOString(),
-            updated_at: row.valid_from || new Date().toISOString(),
+            name: row.company_name,
+            company_name: row.company_name,
+            nit_rut: row.tax_id || "N/A",
+            tax_id: row.tax_id || "N/A",
+            legal_name: row.contact_name || row.company_name,
+            contact_name: row.contact_name || row.company_name,
+            email: row.contact_email || "",
+            contact_email: row.contact_email || "",
+            phone: row.contact_phone || "",
+            contact_phone: row.contact_phone || "",
+            status: "active",
+            notes: row.notes || "",
+            created_at: row.created_at || new Date().toISOString(),
+            updated_at: row.updated_at || new Date().toISOString(),
           }));
+        }
+
+        if (supaLicsRes.data) {
+          const clientMap = new Map(dbCompanies.map((c) => [c.id, c.company_name]));
+          dbLicenses = supaLicsRes.data.map((row: any) => {
+            const clientName = row.customer_id ? clientMap.get(row.customer_id) : undefined;
+            return {
+              id: row.id,
+              license_key: row.license_key,
+              company_id: row.customer_id || "comp_01",
+              company_name:
+                clientName ||
+                (row.customer_email
+                  ? `Cliente (${row.customer_email})`
+                  : row.license_key?.startsWith("MFP-JOY")
+                  ? "Master FixPC Joyerías S.A.S."
+                  : "Cliente Registrado"),
+              company_nit: "N/A",
+              app_id: row.license_key?.startsWith("MFP-JOY") ? "joyeria-erp" : "app_horarios",
+              app_slug: row.license_key?.startsWith("MFP-JOY") ? "joyeria-erp" : "control-horarios",
+              app_name: row.license_key?.startsWith("MFP-JOY") ? "Master FixPC Joyerías ERP (joyeria-erp)" : "Software Licenciado",
+              plan_tier: row.plan_tier?.toUpperCase() === "PRO" ? "Professional" : row.plan_tier?.toUpperCase() === "STD" ? "Standard" : "Enterprise",
+              max_seats: row.max_activations || 1,
+              current_seats: row.current_activations || 0,
+              status: row.status || "active",
+              issued_at: row.valid_from || new Date().toISOString(),
+              expires_at: row.expires_at || new Date(Date.now() + 365 * 86400000).toISOString(),
+              grace_period_days: 7,
+              auto_renew: false,
+              created_at: row.valid_from || new Date().toISOString(),
+              updated_at: row.valid_from || new Date().toISOString(),
+            };
+          });
         }
       } catch (err) {
         console.warn("[SUPABASE][GET_LICENSES_EXCEPTION]", err);
@@ -55,13 +88,19 @@ export async function GET() {
       ...memLicenses.filter((l) => !existingKeys.has(l.license_key)),
     ];
 
-    const companies = store.getCompanies();
+    const memCompanies = store.getCompanies();
+    const existingCompIds = new Set(dbCompanies.map((c) => c.id));
+    const mergedCompanies = [
+      ...dbCompanies,
+      ...memCompanies.filter((c) => !existingCompIds.has(c.id)),
+    ];
+
     const apps = store.getApps();
     const devices = store.getDevices();
 
     return NextResponse.json({
       licenses: mergedLicenses,
-      companies,
+      companies: mergedCompanies,
       apps,
       devices,
     });
@@ -138,28 +177,49 @@ export async function POST(req: NextRequest) {
     const isUuid = (val: string) =>
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
 
-    const emailCliente = customer_email || selectedCompany?.email || null;
+    let customerId: string | null = null;
+    let emailCliente = customer_email || null;
+
+    // 3. Vincular con tabla clients en Supabase: customer_id = client.id, customer_email = client.contact_email
+    if (targetCompanyId && isUuid(targetCompanyId)) {
+      customerId = targetCompanyId;
+      try {
+        const { data: clientRow } = await supabase
+          .from("clients")
+          .select("id, contact_email, company_name")
+          .eq("id", targetCompanyId)
+          .maybeSingle();
+
+        if (clientRow) {
+          customerId = clientRow.id;
+          if (!emailCliente && clientRow.contact_email) {
+            emailCliente = clientRow.contact_email;
+          }
+        }
+      } catch (err) {
+        console.warn("[LICENSES][CLIENT_LOOKUP_WARN]", err);
+      }
+    }
+
+    if (!emailCliente && selectedCompany?.email) {
+      emailCliente = selectedCompany.email;
+    }
+
     const planDbValue = plan || (resolvedPlanTier === "Professional" ? "PRO" : resolvedPlanTier === "Standard" ? "STD" : "ENT");
 
     // Payload sanitizado compatible ESTRICTAMENTE con el esquema real de Supabase:
     // columnas: id, license_key, customer_id, customer_email, plan_tier, status, max_activations, current_activations, valid_from, expires_at
     const insertPayload: Record<string, any> = {
       license_key: newLic.license_key,
+      customer_id: customerId,
+      customer_email: emailCliente,
       plan_tier: planDbValue,
       status: "active",
       max_activations: resolvedCupos,
       current_activations: 0,
-      customer_email: emailCliente,
       expires_at: newLic.expires_at,
       valid_from: new Date().toISOString(),
     };
-
-    // customer_id debe ser un UUID válido o null para evitar rechazo de tipo en Postgres
-    if (targetCompanyId && isUuid(targetCompanyId)) {
-      insertPayload.customer_id = targetCompanyId;
-    } else {
-      insertPayload.customer_id = null;
-    }
 
     const { data: insertedRow, error: insertError } = await supabase
       .from("licenses")

@@ -74,14 +74,23 @@ export const patchLicenseSchema = z
 // 6. Creación de clientes
 export const createClientSchema = z
   .object({
-    name: z.string().min(2, "Nombre requerido").max(128),
-    nit_rut: z.string().min(4, "Identificación/NIT requerido").max(32),
+    name: z.string().max(128).optional(),
+    company_name: z.string().max(128).optional(),
+    nit_rut: z.string().max(32).optional(),
+    tax_id: z.string().max(32).optional(),
     legal_name: z.string().max(128).optional(),
-    email: z.string().email("Correo electrónico inválido").max(128),
+    contact_name: z.string().max(128).optional(),
+    email: z.string().email("Correo electrónico inválido").max(128).optional(),
+    contact_email: z.string().email("Correo electrónico inválido").max(128).optional(),
     phone: z.string().max(32).optional(),
+    contact_phone: z.string().max(32).optional(),
     notes: z.string().max(500).optional(),
   })
-  .strict();
+  .strict()
+  .refine(
+    (data) => Boolean(data.name || data.company_name),
+    { message: "Nombre de empresa requerido", path: ["name"] }
+  );
 
 // 7. Registro de pago manual
 export const manualPaymentSchema = z

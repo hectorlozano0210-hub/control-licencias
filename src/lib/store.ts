@@ -339,10 +339,10 @@ class DataHub {
   getLogs() { return this.logs; }
   getPayments() { return this.payments; }
 
-  createCompany(c: Omit<Company, 'id' | 'created_at' | 'updated_at'>) {
+  createCompany(c: Omit<Company, 'id' | 'created_at' | 'updated_at'> & { id?: string }) {
     const newComp: Company = {
       ...c,
-      id: `comp_${Date.now()}`,
+      id: c.id || `comp_${Date.now()}`,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };

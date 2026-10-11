@@ -5,10 +5,15 @@ export type PaymentStatus = 'pending' | 'succeeded' | 'failed' | 'refunded';
 export interface Company {
   id: string;
   name: string;
+  company_name?: string;
   nit_rut: string;
+  tax_id?: string;
   legal_name?: string;
+  contact_name?: string;
   email: string;
+  contact_email?: string;
   phone?: string;
+  contact_phone?: string;
   status: CompanyStatus;
   billing_address?: Record<string, any>;
   metadata?: Record<string, any>;

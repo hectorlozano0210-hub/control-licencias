@@ -70,6 +70,7 @@ export function LicenseManagerView({
   const [createError, setCreateError] = useState<string | null>(null);
 
   // Form states
+  const [availableClients, setAvailableClients] = useState<Company[]>(companies);
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>(
     companies[0]?.id || ""
   );
@@ -78,13 +79,59 @@ export function LicenseManagerView({
   );
   const [selectedAppId, setSelectedAppId] = useState<string>(apps[0]?.id || "");
 
+  // Carga dinámica de clientes de Supabase al abrir el modal (SELECT id, company_name, tax_id FROM clients)
+  useEffect(() => {
+    let isMounted = true;
+    async function loadDynamicClients() {
+      if (!isOpenCreateModal) return;
+      try {
+        const res = await fetch("/api/v1/clients");
+        if (res.ok) {
+          const data = await res.json();
+          if (data.clients && data.clients.length > 0 && isMounted) {
+            setAvailableClients(data.clients);
+            // Si la empresa seleccionada no está en la lista o está vacía, preseleccionar la primera
+            if (!selectedCompanyId || !data.clients.some((c: any) => c.id === selectedCompanyId)) {
+              const firstClient = data.clients[0];
+              setSelectedCompanyId(firstClient.id);
+              setCustomerEmail(firstClient.contact_email || firstClient.email || "");
+            }
+          }
+        }
+      } catch (err) {
+        console.warn("Error cargando clientes dinámicos:", err);
+      }
+    }
+    loadDynamicClients();
+    return () => {
+      isMounted = false;
+    };
+  }, [isOpenCreateModal]);
+
+  // Sincronizar availableClients cuando cambien las props
+  useEffect(() => {
+    if (companies && companies.length > 0) {
+      setAvailableClients((prev) => {
+        const existingIds = new Set(prev.map((p) => p.id));
+        const merged = [...prev];
+        companies.forEach((c) => {
+          if (!existingIds.has(c.id)) {
+            merged.push(c);
+          }
+        });
+        return merged;
+      });
+    }
+  }, [companies]);
+
   // Actualizar email por defecto si cambia la empresa seleccionada
   useEffect(() => {
-    const comp = companies.find((c) => c.id === selectedCompanyId);
-    if (comp?.email) {
-      setCustomerEmail(comp.email);
+    const list = availableClients.length > 0 ? availableClients : companies;
+    const comp = list.find((c) => c.id === selectedCompanyId);
+    if (comp) {
+      setCustomerEmail(comp.contact_email || comp.email || "");
     }
-  }, [selectedCompanyId, companies]);
+  }, [selectedCompanyId, availableClients, companies]);
 
   // Catálogo completo de aplicaciones garantizando Master FixPC Joyerías ERP
   const allApps = useMemo(() => {
@@ -650,18 +697,32 @@ export function LicenseManagerView({
                 )}
                 {/* Selector Empresa */}
                 <div>
-                  <label className="block text-zinc-300 font-semibold mb-1">
-                    Empresa Cliente
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-zinc-300 font-semibold">
+                      Empresa Cliente
+                    </label>
+                    <span className="text-[10px] text-zinc-500">
+                      {(availableClients.length > 0 ? availableClients : companies).length} clientes disponibles
+                    </span>
+                  </div>
                   <select
                     value={selectedCompanyId}
-                    onChange={(e) => setSelectedCompanyId(e.target.value)}
+                    onChange={(e) => {
+                      const newId = e.target.value;
+                      setSelectedCompanyId(newId);
+                      const comp = (availableClients.length > 0 ? availableClients : companies).find(
+                        (c) => c.id === newId
+                      );
+                      if (comp) {
+                        setCustomerEmail(comp.contact_email || comp.email || "");
+                      }
+                    }}
                     required
                     className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-white focus:outline-none focus:border-violet-500/50"
                   >
-                    {companies.map((c) => (
+                    {(availableClients.length > 0 ? availableClients : companies).map((c) => (
                       <option key={c.id} value={c.id}>
-                        {c.name} ({c.nit_rut})
+                        {c.company_name || c.name} ({c.tax_id || c.nit_rut || "Sin NIT"})
                       </option>
                     ))}
                   </select>
