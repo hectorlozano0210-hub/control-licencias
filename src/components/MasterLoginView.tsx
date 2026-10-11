@@ -132,12 +132,16 @@ export function MasterLoginView({ onSuccess }: MasterLoginViewProps) {
           {/* Top Border Animated Beam */}
           <BorderBeam size={220} duration={14} delay={0} colorFrom="#8b5cf6" colorTo="#10b981" />
 
-          {/* Header Icon */}
+          {/* Header Icon & Logo */}
           <div className="flex flex-col items-center text-center mb-6">
-            <div className="relative mb-4 flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-tr from-violet-600 via-indigo-600 to-emerald-400 shadow-xl shadow-violet-500/30">
-              <Lock className="w-8 h-8 text-white" />
-              <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-emerald-400 animate-ping" />
-              <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-emerald-400 border-2 border-black" />
+            <div className="relative mb-3 flex items-center justify-center p-2 rounded-2xl bg-black/40 border border-white/10 shadow-2xl backdrop-blur-md">
+              <img
+                src="/logo-masterfixpc-reducido.png"
+                alt="Master FixPC"
+                className="w-14 h-14 object-contain drop-shadow-[0_0_15px_rgba(202,164,85,0.4)]"
+              />
+              <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-emerald-400 animate-ping" />
+              <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-emerald-400 border-2 border-black" />
             </div>
 
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-violet-500/15 border border-violet-500/30 text-violet-300 text-[11px] font-semibold uppercase tracking-wider mb-2">

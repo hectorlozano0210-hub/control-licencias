@@ -11,11 +11,27 @@ const config: Config = {
     extend: {
       colors: {
         background: "#09090b",
+        obsidian: "#090d12",
         surface: {
           DEFAULT: "rgba(18, 18, 24, 0.7)",
           card: "rgba(22, 22, 30, 0.65)",
           border: "rgba(255, 255, 255, 0.08)",
           hover: "rgba(255, 255, 255, 0.04)",
+          container: "#0d141a",
+          pod: "#111b22",
+        },
+        gold: {
+          300: "#f3e3a9",
+          400: "#e6c875",
+          500: "#caa455",
+          600: "#b38f3f",
+          700: "#8c6e2d",
+        },
+        cyanGlow: {
+          300: "#5eead4",
+          400: "#2dd4bf",
+          500: "#14b8a6",
+          900: "#042f2e",
         },
         brand: {
           emerald: "#10b981",

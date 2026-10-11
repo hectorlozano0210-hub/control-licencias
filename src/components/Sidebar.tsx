@@ -106,8 +106,12 @@ export function Sidebar({
       {/* Brand Header */}
       <div className="flex items-center justify-between p-5 border-b border-white/10">
         <div className="flex items-center space-x-3 overflow-hidden">
-          <div className="relative flex items-center justify-center w-10 h-10 rounded-2xl bg-gradient-to-tr from-violet-600 via-indigo-600 to-emerald-400 shadow-lg shadow-violet-500/25 shrink-0">
-            <ShieldCheck className="w-6 h-6 text-white" />
+          <div className="relative flex items-center justify-center w-10 h-10 rounded-2xl bg-black/50 border border-white/10 shadow-lg shadow-violet-500/20 shrink-0 p-1">
+            <img
+              src="/logo-masterfixpc-reducido.png"
+              alt="Master FixPC"
+              className="w-full h-full object-contain"
+            />
             <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
             <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400" />
           </div>

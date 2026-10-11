@@ -106,19 +106,28 @@ export function DashboardView({
     <div className="space-y-8 animate-in fade-in duration-500">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-white/10">
-        <div>
-          <div className="flex items-center space-x-2">
-            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-white">
-              <TextReveal text="Centro de Control & Seguridad" />
-            </h1>
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              Sistemas Online
-            </span>
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-2xl bg-black/40 border border-gold-500/30 shadow-[0_0_15px_rgba(202,164,85,0.25)] shrink-0">
+            <img
+              src="/logo-masterfixpc-reducido.png"
+              alt="Master FixPC"
+              className="w-10 h-10 object-contain"
+            />
           </div>
-          <p className="text-sm text-zinc-400 mt-1">
-            Supervisión criptográfica, cuotas de hardware en vivo y salud del ecosistema de software.
-          </p>
+          <div>
+            <div className="flex items-center space-x-2">
+              <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-white">
+                <TextReveal text="Centro de Control & Seguridad" />
+              </h1>
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                Sistemas Online
+              </span>
+            </div>
+            <p className="text-sm text-zinc-400 mt-1">
+              Supervisión criptográfica, cuotas de hardware en vivo y salud del ecosistema de software.
+            </p>
+          </div>
         </div>
 
         <div className="flex items-center gap-3">

@@ -129,14 +129,24 @@ export function ApplicationsView({
     <div className="space-y-6 animate-in fade-in duration-500">
       {/* Title & Top Action Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/10">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-white flex items-center gap-2.5">
-            <Layers className="w-7 h-7 text-indigo-400" />
-            Catálogo de Software & Aplicaciones
-          </h1>
-          <p className="text-sm text-zinc-400 mt-1">
-            Gestión de tus programas autorizados, prefijos de claves y compatibilidad de versiones.
-          </p>
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-2xl bg-black/40 border border-gold-500/30 shadow-[0_0_15px_rgba(202,164,85,0.25)] shrink-0">
+            <img
+              src="/logo-masterfixpc-reducido.png"
+              alt="Master FixPC"
+              className="w-10 h-10 object-contain"
+            />
+          </div>
+          <div>
+            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-white flex items-center gap-2.5">
+              <span className="bg-gradient-to-r from-white via-gold-300 to-indigo-400 bg-clip-text text-transparent">
+                Catálogo de Software & Aplicaciones
+              </span>
+            </h1>
+            <p className="text-sm text-zinc-400 mt-1">
+              Gestión de tus programas autorizados, prefijos de claves y compatibilidad de versiones.
+            </p>
+          </div>
         </div>
 
         <button

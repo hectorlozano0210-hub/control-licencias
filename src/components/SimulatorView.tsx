@@ -157,14 +157,24 @@ export function SimulatorView({
     <div className="space-y-6 animate-in fade-in duration-500">
       {/* Title */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/10">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-white flex items-center gap-2.5">
-            <Terminal className="w-7 h-7 text-cyan-400" />
-            Sandbox & Simulador de Activación en Vivo
-          </h1>
-          <p className="text-sm text-zinc-400 mt-1">
-            Prueba cómo interactúa un software cliente con la API de validación y huella digital de hardware.
-          </p>
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-2xl bg-black/40 border border-gold-500/30 shadow-[0_0_15px_rgba(202,164,85,0.25)] shrink-0">
+            <img
+              src="/logo-masterfixpc-reducido.png"
+              alt="Master FixPC"
+              className="w-10 h-10 object-contain"
+            />
+          </div>
+          <div>
+            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-white flex items-center gap-2.5">
+              <span className="bg-gradient-to-r from-white via-gold-300 to-cyanGlow-400 bg-clip-text text-transparent">
+                Sandbox & Terminal de Activación
+              </span>
+            </h1>
+            <p className="text-sm text-zinc-400 mt-1">
+              Prueba cómo interactúa un software cliente con la API de validación y huella digital de hardware.
+            </p>
+          </div>
         </div>
 
         <button
