@@ -146,9 +146,13 @@ export function DashboardView({
 
           <button
             onClick={onOpenCreateLicense}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-violet-600 via-indigo-600 to-emerald-500 hover:from-violet-500 hover:to-emerald-400 text-white font-semibold text-xs shadow-lg shadow-violet-600/25 transition-all transform active:scale-95"
+            className="btn-shine flex items-center gap-2 px-4 py-2 rounded-full font-bold uppercase tracking-wider text-[#080f15] text-xs shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all border border-gold-300"
+            style={{
+              background: "linear-gradient(135deg, #ffdea1 0%, #caa455 50%, #8c6e2d 100%)",
+              boxShadow: "0 0 20px rgba(202, 164, 85, 0.4)",
+            }}
           >
-            <Sparkles className="w-4 h-4 text-emerald-200" />
+            <Sparkles className="w-3.5 h-3.5 text-[#080f15]" />
             <span>Emitir Nueva Licencia</span>
           </button>
         </div>

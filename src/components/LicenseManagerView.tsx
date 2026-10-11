@@ -237,14 +237,24 @@ export function LicenseManagerView({
     <div className="space-y-6 animate-in fade-in duration-500">
       {/* Title & Actions Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/10">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-white flex items-center gap-2.5">
-            <KeyRound className="w-7 h-7 text-violet-400" />
-            Gestor & Generador de Licencias
-          </h1>
-          <p className="text-sm text-zinc-400 mt-1">
-            Emisión de claves criptográficas, cuotas de cupos concurrentes y ciclo de vida de contratos.
-          </p>
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-2xl bg-black/40 border border-gold-500/30 shadow-[0_0_15px_rgba(202,164,85,0.25)] shrink-0">
+            <img
+              src="/logo-masterfixpc-reducido.png"
+              alt="Master FixPC"
+              className="w-10 h-10 object-contain"
+            />
+          </div>
+          <div>
+            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-white flex items-center gap-2.5">
+              <span className="bg-gradient-to-r from-white via-gold-300 to-emerald-400 bg-clip-text text-transparent">
+                Gestor & Generador de Licencias
+              </span>
+            </h1>
+            <p className="text-sm text-zinc-400 mt-1">
+              Emisión de claves criptográficas, cuotas de cupos concurrentes y ciclo de vida de contratos.
+            </p>
+          </div>
         </div>
 
         <div className="flex items-center gap-2.5 shrink-0">
@@ -263,9 +273,13 @@ export function LicenseManagerView({
               setCreatedLicenseResult(null);
               onSetOpenCreateModal(true);
             }}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 via-indigo-600 to-emerald-500 hover:from-violet-500 hover:to-emerald-400 text-white font-semibold text-xs shadow-lg shadow-violet-600/30 transition-all active:scale-95"
+            className="btn-shine flex items-center gap-2 px-4 py-2.5 rounded-full font-bold uppercase tracking-wider text-[#080f15] text-xs shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all border border-gold-300"
+            style={{
+              background: "linear-gradient(135deg, #ffdea1 0%, #caa455 50%, #8c6e2d 100%)",
+              boxShadow: "0 0 20px rgba(202, 164, 85, 0.4)",
+            }}
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-4 h-4 text-[#080f15]" />
             <span>Generar Nueva Licencia</span>
           </button>
         </div>

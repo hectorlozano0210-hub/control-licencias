@@ -76,6 +76,14 @@ code, pre {
   box-shadow: 0 0 35px -5px rgba(139, 92, 246, 0.25);
 }
 
+.glow-gold {
+  box-shadow: 0 0 25px rgba(202, 164, 85, 0.28);
+}
+
+.glow-cyan {
+  box-shadow: 0 0 25px rgba(45, 212, 191, 0.22);
+}
+
 /* Subtle Grid Mesh Background (Aceternity UI style) */
 .bg-grid-pattern {
   background-size: 36px 36px;
@@ -109,4 +117,37 @@ code, pre {
   -webkit-background-clip: text;
   background-clip: text;
   animation: shimmer 4s linear infinite;
+}
+
+/* Cyber-Luxury Metallic Sheens from Stitch */
+.gold-metallic-text {
+  background: linear-gradient(135deg, #fdf6d8 0%, #e6c875 50%, #caa455 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.cyan-metallic-text {
+  background: linear-gradient(135deg, #e6fffa 0%, #5eead4 50%, #14b8a6 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Micro-shine button sweep */
+.btn-shine {
+  position: relative;
+  overflow: hidden;
+}
+.btn-shine::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.25), transparent);
+  transform: skewX(-20deg);
+  transition: 0.75s;
+}
+.btn-shine:hover::after {
+  left: 150%;
 }
