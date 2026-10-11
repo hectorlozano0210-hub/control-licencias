@@ -1,4 +1,4 @@
-import { getSupabaseClient } from "./supabase";
+import { getSupabaseClient, getSupabaseAdminClient } from "./supabase";
 import { SignJWT } from "jose";
 import { store } from "./store";
 
@@ -41,9 +41,6 @@ export interface DeactivateResult {
   current_activations?: number;
 }
 
-function getSupabaseAdminClient() {
-  return getSupabaseClient();
-}
 
 export async function generateOfflineToken(data: {
   license_id: string;

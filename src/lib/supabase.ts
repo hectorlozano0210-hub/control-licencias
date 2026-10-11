@@ -229,10 +229,22 @@ export function getSupabaseClient(): SupabaseClient | null {
   }
 }
 
-/**
- * Resetea la caché del cliente (útil en pruebas unitarias con simulación de variables)
- */
 export function resetSupabaseClientCache(): void {
   cachedClient = null;
   cachedClientKey = null;
+}
+
+/**
+ * Obtiene la instancia del cliente Supabase garantizando privilegios administrativos (SUPABASE_SERVICE_ROLE_KEY)
+ * para omitir las políticas de Row Level Security (RLS) en operaciones de emisión de licencias.
+ */
+export function getSupabaseAdminClient(): SupabaseClient | null {
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!serviceKey) {
+    console.warn(
+      "[SUPABASE][WARN] Variable SUPABASE_SERVICE_ROLE_KEY no encontrada en el entorno. " +
+      "Se usará la clave disponible (posible bloqueo por RLS en inserciones)."
+    );
+  }
+  return getSupabaseClient();
 }

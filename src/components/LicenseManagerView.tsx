@@ -44,6 +44,7 @@ interface LicenseManagerViewProps {
     max_seats: number;
     duration_days: number;
     notes?: string;
+    customer_email?: string;
   }) => Promise<any>;
   onOpenManualPayment?: (companyId?: string, licenseId?: string) => void;
 }
@@ -72,7 +73,18 @@ export function LicenseManagerView({
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>(
     companies[0]?.id || ""
   );
+  const [customerEmail, setCustomerEmail] = useState<string>(
+    companies[0]?.email || ""
+  );
   const [selectedAppId, setSelectedAppId] = useState<string>(apps[0]?.id || "");
+
+  // Actualizar email por defecto si cambia la empresa seleccionada
+  useEffect(() => {
+    const comp = companies.find((c) => c.id === selectedCompanyId);
+    if (comp?.email) {
+      setCustomerEmail(comp.email);
+    }
+  }, [selectedCompanyId, companies]);
 
   // Catálogo completo de aplicaciones garantizando Master FixPC Joyerías ERP
   const allApps = useMemo(() => {
@@ -121,6 +133,7 @@ export function LicenseManagerView({
         max_seats: Number(seats),
         duration_days: Number(durationDays),
         notes,
+        customer_email: customerEmail.trim() || undefined,
       });
       if (res && res.license) {
         setCreatedLicenseResult(res.license);
@@ -652,6 +665,20 @@ export function LicenseManagerView({
                       </option>
                     ))}
                   </select>
+                </div>
+
+                {/* Correo Electrónico del Cliente (customer_email) */}
+                <div>
+                  <label className="block text-zinc-300 font-semibold mb-1">
+                    Correo del Cliente (customer_email)
+                  </label>
+                  <input
+                    type="email"
+                    placeholder="cliente@joyeria.com (Opcional, compatible con Supabase)"
+                    value={customerEmail}
+                    onChange={(e) => setCustomerEmail(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-white placeholder:text-zinc-600 focus:outline-none focus:border-violet-500/50"
+                  />
                 </div>
 
                 {/* Selector Aplicación */}

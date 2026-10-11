@@ -12,7 +12,11 @@ import { DeviceManagerView } from "@/components/DeviceManagerView";
 import { TelemetryView } from "@/components/TelemetryView";
 import { SimulatorView } from "@/components/SimulatorView";
 import { SdkDocsView } from "@/components/SdkDocsView";
+import { MasterLoginView } from "@/components/MasterLoginView";
 import { Spotlight } from "@/components/ui/Spotlight";
+import { formatFingerprintPreview } from "@/lib/security/client-fingerprint";
+import { Laptop, LogOut, RefreshCw, ShieldCheck } from "lucide-react";
+import { toast } from "sonner";
 import {
   License,
   ActivatedDevice,
@@ -50,6 +54,39 @@ export default function Home() {
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [paymentCompanyId, setPaymentCompanyId] = useState<string | undefined>(undefined);
   const [paymentLicenseId, setPaymentLicenseId] = useState<string | undefined>(undefined);
+
+  // Super Admin Master Session State
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const [activeFingerprint, setActiveFingerprint] = useState<string>("");
+
+  // Verificar sesión maestra al montar la aplicación
+  useEffect(() => {
+    async function checkMasterSession() {
+      try {
+        const res = await fetch("/api/v1/auth/master-session");
+        const data = await res.json();
+        if (data.authenticated) {
+          setIsAuthenticated(true);
+          setActiveFingerprint(data.device_fingerprint || "");
+        } else {
+          setIsAuthenticated(false);
+        }
+      } catch {
+        setIsAuthenticated(false);
+      }
+    }
+    checkMasterSession();
+  }, []);
+
+  const handleMasterLogout = async () => {
+    try {
+      await fetch("/api/v1/auth/master-logout", { method: "POST" });
+      setIsAuthenticated(false);
+      toast.info("Sesión Maestra cerrada exitosamente.");
+    } catch {
+      setIsAuthenticated(false);
+    }
+  };
 
   // Client detail drawer state
   const [selectedClientForDetail, setSelectedClientForDetail] = useState<CompanyWithStats | null>(null);
@@ -149,6 +186,7 @@ export default function Home() {
     max_seats: number;
     duration_days: number;
     notes?: string;
+    customer_email?: string;
   }) => {
     const res = await fetch("/api/v1/licenses", {
       method: "POST",
@@ -205,6 +243,35 @@ export default function Home() {
     (l) => l.event_type === "activate_fraud_blocked"
   ).length;
 
+  // Estado 1: Verificando sesión maestra
+  if (isAuthenticated === null) {
+    return (
+      <div className="min-h-screen bg-[#09090b] text-white flex flex-col items-center justify-center p-4">
+        <div className="flex flex-col items-center gap-3 animate-pulse">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-violet-600 to-emerald-400 flex items-center justify-center shadow-lg shadow-violet-500/25">
+            <ShieldCheck className="w-6 h-6 text-white" />
+          </div>
+          <span className="text-xs text-zinc-400 font-medium">
+            Verificando autorización de terminal maestra...
+          </span>
+        </div>
+      </div>
+    );
+  }
+
+  // Estado 2: No autenticado -> Pantalla de Login Super Admin con Device Binding
+  if (isAuthenticated === false) {
+    return (
+      <MasterLoginView
+        onSuccess={(fp) => {
+          setIsAuthenticated(true);
+          setActiveFingerprint(fp);
+          refreshData();
+        }}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#09090b] text-zinc-100 flex relative overflow-x-hidden">
       {/* Subtle Background Grid Mesh with Radial Mask */}
@@ -236,6 +303,37 @@ export default function Home() {
         }`}
       >
         <div className="max-w-7xl mx-auto">
+          {/* Top Bar: Estación Maestra & Cerrar Sesión Maestra */}
+          <div className="mb-6 pb-4 border-b border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-medium shadow-sm">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                </span>
+                <Laptop className="w-3.5 h-3.5 text-emerald-400" />
+                <span>
+                  Estación Maestra:{" "}
+                  <span className="font-mono font-semibold text-white">
+                    {formatFingerprintPreview(activeFingerprint)}
+                  </span>
+                </span>
+              </div>
+              <span className="text-[11px] text-zinc-500 hidden sm:inline">
+                • Hardware Vinculado
+              </span>
+            </div>
+
+            <button
+              onClick={handleMasterLogout}
+              className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30 text-xs font-semibold shadow-lg shadow-rose-950/30 transition-all active:scale-95 shrink-0"
+              title="Cerrar Sesión Maestra"
+            >
+              <LogOut className="w-3.5 h-3.5 text-rose-400" />
+              <span>Cerrar Sesión Maestra</span>
+            </button>
+          </div>
+
           <AnimatePresence mode="wait">
             <motion.div
               key={currentTab}

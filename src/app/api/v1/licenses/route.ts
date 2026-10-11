@@ -2,46 +2,49 @@ import { NextRequest, NextResponse } from "next/server";
 import { store } from "@/lib/store";
 import { createLicenseSchema, patchLicenseSchema, validateRequestBody } from "@/lib/security/validators";
 import { handleApiError } from "@/lib/security/error-handler";
-import { getSupabaseClient, getDatabaseConfig } from "@/lib/supabase";
+import { getSupabaseAdminClient, getDatabaseConfig } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    const supabase = getSupabaseClient();
+    const supabase = getSupabaseAdminClient();
     let dbLicenses: any[] = [];
 
     if (supabase) {
       try {
         const { data: supaLics, error: supaErr } = await supabase
           .from("licenses")
-          .select("*")
-          .order("created_at", { ascending: false });
+          .select("id, license_key, customer_id, customer_email, plan_tier, status, max_activations, current_activations, valid_from, expires_at");
 
-        if (!supaErr && supaLics) {
+        if (supaErr) {
+          console.warn("[SUPABASE][GET_LICENSES_WARN] Error consultando tabla licenses:", supaErr.message);
+        } else if (supaLics) {
           dbLicenses = supaLics.map((row: any) => ({
             id: row.id,
             license_key: row.license_key,
             company_id: row.customer_id || "comp_01",
-            company_name: row.client_name || row.metadata?.company_name || (row.license_key?.startsWith("MFP-JOY") ? "Master FixPC Joyerías S.A.S." : "Cliente Registrado"),
-            company_nit: row.metadata?.company_nit || "N/A",
-            app_id: row.metadata?.app_id || (row.license_key?.startsWith("MFP-JOY") ? "joyeria-erp" : "app_horarios"),
-            app_slug: row.app_slug || row.metadata?.app_slug || (row.license_key?.startsWith("MFP-JOY") ? "joyeria-erp" : "control-horarios"),
-            app_name: row.metadata?.app_name || (row.license_key?.startsWith("MFP-JOY") ? "Master FixPC Joyerías ERP (joyeria-erp)" : "Software Licenciado"),
+            company_name: row.customer_email
+              ? `Cliente (${row.customer_email})`
+              : (row.license_key?.startsWith("MFP-JOY") ? "Master FixPC Joyerías S.A.S." : "Cliente Registrado"),
+            company_nit: "N/A",
+            app_id: row.license_key?.startsWith("MFP-JOY") ? "joyeria-erp" : "app_horarios",
+            app_slug: row.license_key?.startsWith("MFP-JOY") ? "joyeria-erp" : "control-horarios",
+            app_name: row.license_key?.startsWith("MFP-JOY") ? "Master FixPC Joyerías ERP (joyeria-erp)" : "Software Licenciado",
             plan_tier: row.plan_tier?.toUpperCase() === "PRO" ? "Professional" : row.plan_tier?.toUpperCase() === "STD" ? "Standard" : "Enterprise",
             max_seats: row.max_activations || 1,
             current_seats: row.current_activations || 0,
             status: row.status || "active",
-            issued_at: row.created_at || new Date().toISOString(),
+            issued_at: row.valid_from || new Date().toISOString(),
             expires_at: row.expires_at || new Date(Date.now() + 365 * 86400000).toISOString(),
             grace_period_days: 7,
             auto_renew: false,
-            created_at: row.created_at || new Date().toISOString(),
-            updated_at: row.updated_at || new Date().toISOString(),
+            created_at: row.valid_from || new Date().toISOString(),
+            updated_at: row.valid_from || new Date().toISOString(),
           }));
         }
       } catch (err) {
-        console.warn("[SUPABASE][GET_LICENSES_WARN]", err);
+        console.warn("[SUPABASE][GET_LICENSES_EXCEPTION]", err);
       }
     }
 
@@ -74,139 +77,111 @@ export async function POST(req: NextRequest) {
       return validation.response;
     }
 
-    const { company_id, app_id, plan_tier, max_seats, duration_days, notes } = validation.data;
-
-    // 1. Crear registro base en el store local para asignación de clave y prefijo
-    const newLic = store.createLicense({
+    const {
       company_id,
+      customer_id,
+      customer_email,
       app_id,
       plan_tier,
+      plan,
       max_seats,
+      max_activations,
+      cupos,
       duration_days,
+      notes,
+    } = validation.data;
+
+    // Normalizar datos de entrada
+    const targetCompanyId = customer_id || company_id || "comp_01";
+    const targetAppId = app_id || "joyeria-erp";
+    const selectedCompany = store.getCompanies().find((c) => c.id === targetCompanyId);
+
+    const resolvedPlanTier: "Standard" | "Professional" | "Enterprise" =
+      plan_tier === "Standard" || plan_tier === "STD" || plan === "Standard" || plan === "STD"
+        ? "Standard"
+        : plan_tier === "Enterprise" || plan_tier === "ENT" || plan === "Enterprise" || plan === "ENT"
+        ? "Enterprise"
+        : "Professional";
+
+    const resolvedCupos = Number(cupos || max_activations || max_seats) || 1;
+    const resolvedDuration = Number(duration_days) || 365;
+
+    // 1. Crear registro base en el store local para generación criptográfica de la clave
+    const newLic = store.createLicense({
+      company_id: selectedCompany ? selectedCompany.id : targetCompanyId,
+      app_id: targetAppId,
+      plan_tier: resolvedPlanTier,
+      max_seats: resolvedCupos,
+      duration_days: resolvedDuration,
       notes,
     });
 
-    // 2. Conectar y persistir de forma real en Supabase
-    const supabase = getSupabaseClient();
+    // 2. Conectar y persistir de forma real en Supabase con privilegios administrativos
+    const supabase = getSupabaseAdminClient();
 
-    if (supabase) {
-      const planTierNormalized =
-        plan_tier.toLowerCase() === "professional"
-          ? "pro"
-          : plan_tier.toLowerCase() === "enterprise"
-          ? "enterprise"
-          : "standard";
-
-      const isUuid = (val: string) =>
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
-
-      // Payload base para la tabla licenses en Supabase
-      const basePayload: Record<string, any> = {
-        license_key: newLic.license_key,
-        plan_tier: planTierNormalized,
-        status: "active",
-        max_activations: Number(max_seats) || 1,
-        current_activations: 0,
-        expires_at: newLic.expires_at,
-      };
-
-      if (company_id && isUuid(company_id)) {
-        basePayload.customer_id = company_id;
-      }
-
-      // Payload extendido si existen columnas client_name, app_slug o metadata JSONB
-      const extendedPayload: Record<string, any> = {
-        ...basePayload,
-        client_name: newLic.company_name || company_id,
-        app_slug: newLic.app_slug || app_id,
-        metadata: {
-          company_id,
-          company_name: newLic.company_name,
-          app_id,
-          app_slug: newLic.app_slug,
-          notes: notes || undefined,
+    if (!supabase) {
+      const dbConfig = getDatabaseConfig();
+      const msg = !dbConfig.url
+        ? "No se ha configurado SUPABASE_URL en las variables de entorno de Render."
+        : "No se ha configurado SUPABASE_SERVICE_ROLE_KEY en las variables de entorno de Render.";
+      console.error("[SUPABASE][CONFIG_MISSING]", msg);
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Error de persistencia: ${msg}`,
+          code: "SUPABASE_NOT_CONFIGURED",
         },
-      };
+        { status: 500 }
+      );
+    }
 
-      let insertError: any = null;
-      let insertedRow: any = null;
+    const isUuid = (val: string) =>
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val);
 
-      const firstTry = await supabase
-        .from("licenses")
-        .insert([extendedPayload])
-        .select()
-        .maybeSingle();
+    const emailCliente = customer_email || selectedCompany?.email || null;
+    const planDbValue = plan || (resolvedPlanTier === "Professional" ? "PRO" : resolvedPlanTier === "Standard" ? "STD" : "ENT");
 
-      if (firstTry.error) {
-        const isColumnMissing =
-          firstTry.error.code === "PGRST204" ||
-          firstTry.error.message?.includes("column") ||
-          firstTry.error.message?.includes("does not exist");
+    // Payload sanitizado compatible ESTRICTAMENTE con el esquema real de Supabase:
+    // columnas: id, license_key, customer_id, customer_email, plan_tier, status, max_activations, current_activations, valid_from, expires_at
+    const insertPayload: Record<string, any> = {
+      license_key: newLic.license_key,
+      plan_tier: planDbValue,
+      status: "active",
+      max_activations: resolvedCupos,
+      current_activations: 0,
+      customer_email: emailCliente,
+      expires_at: newLic.expires_at,
+      valid_from: new Date().toISOString(),
+    };
 
-        if (isColumnMissing) {
-          // Reintentar con solo las columnas garantizadas de la tabla licenses
-          const secondTry = await supabase
-            .from("licenses")
-            .insert([basePayload])
-            .select()
-            .maybeSingle();
-
-          if (secondTry.error) {
-            if (secondTry.error.code === "23514") {
-              const thirdTry = await supabase
-                .from("licenses")
-                .insert([{ ...basePayload, plan_tier: newLic.plan_tier }])
-                .select()
-                .maybeSingle();
-
-              if (thirdTry.error) {
-                insertError = thirdTry.error;
-              } else {
-                insertedRow = thirdTry.data;
-              }
-            } else {
-              insertError = secondTry.error;
-            }
-          } else {
-            insertedRow = secondTry.data;
-          }
-        } else if (firstTry.error.code === "23514") {
-          const retryCheck = await supabase
-            .from("licenses")
-            .insert([{ ...extendedPayload, plan_tier: newLic.plan_tier }])
-            .select()
-            .maybeSingle();
-
-          if (retryCheck.error) {
-            insertError = retryCheck.error;
-          } else {
-            insertedRow = retryCheck.data;
-          }
-        } else {
-          insertError = firstTry.error;
-        }
-      } else {
-        insertedRow = firstTry.data;
-      }
-
-      if (insertError) {
-        console.error("[SUPABASE][INSERT_ERROR]", insertError);
-        return NextResponse.json(
-          {
-            success: false,
-            error: `Error al registrar en Supabase: ${insertError.message || insertError.details || insertError.hint || "Fallo de permisos o tabla"} (Código: ${insertError.code || "UNKNOWN"})`,
-            code: insertError.code || "SUPABASE_INSERT_ERROR",
-            details: insertError,
-          },
-          { status: 500 }
-        );
-      }
-
-      if (insertedRow && insertedRow.id) {
-        newLic.id = insertedRow.id;
-      }
+    // customer_id debe ser un UUID válido o null para evitar rechazo de tipo en Postgres
+    if (targetCompanyId && isUuid(targetCompanyId)) {
+      insertPayload.customer_id = targetCompanyId;
     } else {
-      console.warn("[SUPABASE] Cliente de base de datos no configurado en entorno actual.");
+      insertPayload.customer_id = null;
+    }
+
+    const { data: insertedRow, error: insertError } = await supabase
+      .from("licenses")
+      .insert([insertPayload])
+      .select()
+      .maybeSingle();
+
+    if (insertError) {
+      console.error("[SUPABASE][INSERT_ERROR]", insertError);
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Error al registrar en Supabase: ${insertError.message || insertError.details || insertError.hint || "Fallo de permisos o tabla"} (Código: ${insertError.code || "UNKNOWN"})`,
+          code: insertError.code || "SUPABASE_INSERT_ERROR",
+          details: insertError,
+        },
+        { status: 500 }
+      );
+    }
+
+    if (insertedRow && insertedRow.id) {
+      newLic.id = insertedRow.id;
     }
 
     return NextResponse.json({

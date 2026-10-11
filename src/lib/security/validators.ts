@@ -47,11 +47,16 @@ export const heartbeatSchema = z
 // 4. Creación de licencias
 export const createLicenseSchema = z
   .object({
-    company_id: z.string().min(1, "company_id es requerido"),
-    app_id: z.string().min(1, "app_id es requerido"),
-    plan_tier: z.enum(["Standard", "Professional", "Enterprise"]).default("Enterprise"),
-    max_seats: z.coerce.number().int().min(1, "Debe tener al menos 1 cupo").max(500, "Máximo 500 cupos"),
-    duration_days: z.coerce.number().int().min(1, "Duración mínima 1 día").max(3650, "Duración máxima 10 años"),
+    company_id: z.string().optional(),
+    customer_id: z.string().optional(),
+    customer_email: z.string().email("Correo electrónico inválido").optional().or(z.literal("")).nullable(),
+    app_id: z.string().optional(),
+    plan_tier: z.string().optional(),
+    plan: z.string().optional(),
+    max_seats: z.coerce.number().int().min(1, "Debe tener al menos 1 cupo").max(500, "Máximo 500 cupos").optional(),
+    max_activations: z.coerce.number().int().min(1).max(500).optional(),
+    cupos: z.coerce.number().int().min(1).max(500).optional(),
+    duration_days: z.coerce.number().int().min(1, "Duración mínima 1 día").max(3650, "Duración máxima 10 años").optional(),
     notes: z.string().max(500).optional(),
   })
   .strict();
