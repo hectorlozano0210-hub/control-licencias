@@ -66,6 +66,7 @@ export function LicenseManagerView({
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [actionMenuOpenId, setActionMenuOpenId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
 
   // Form states
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>(
@@ -110,6 +111,7 @@ export function LicenseManagerView({
 
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setCreateError(null);
     try {
       setIsSubmitting(true);
       const res = await onCreateLicense({
@@ -130,9 +132,14 @@ export function LicenseManagerView({
         toast.success("¡Licencia emitida exitosamente!", {
           description: `Clave: ${res.license.license_key} (${res.license.max_seats} cupos)`,
         });
+      } else if (res && res.error) {
+        setCreateError(res.error);
+        toast.error("Error al emitir la licencia", { description: res.error, duration: 8000 });
       }
     } catch (err: any) {
-      toast.error("Error al emitir la licencia", { description: err.message });
+      const msg = err.message || "Error al registrar en Supabase";
+      setCreateError(msg);
+      toast.error("Error al emitir la licencia", { description: msg, duration: 8000 });
     } finally {
       setIsSubmitting(false);
     }
@@ -548,7 +555,7 @@ export function LicenseManagerView({
                 </div>
               </div>
               <button
-                onClick={() => onSetOpenCreateModal(false)}
+                onClick={() => { onSetOpenCreateModal(false); setCreateError(null); }}
                 className="p-1 rounded-lg hover:bg-white/10 text-zinc-400 hover:text-white"
               >
                 ✕
@@ -619,6 +626,15 @@ export function LicenseManagerView({
               </div>
             ) : (
               <form onSubmit={handleCreateSubmit} className="mt-5 space-y-4 text-xs">
+                {createError && (
+                  <div className="p-3.5 rounded-xl bg-rose-500/15 border border-rose-500/40 text-rose-300 flex items-start gap-2.5 animate-in fade-in duration-200">
+                    <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+                    <div className="flex-1 min-w-0">
+                      <div className="font-bold text-rose-200 text-xs">Error al registrar en Supabase</div>
+                      <div className="text-[11px] text-rose-300/90 mt-0.5 leading-relaxed break-words">{createError}</div>
+                    </div>
+                  </div>
+                )}
                 {/* Selector Empresa */}
                 <div>
                   <label className="block text-zinc-300 font-semibold mb-1">
@@ -735,7 +751,7 @@ export function LicenseManagerView({
                 <div className="flex items-center justify-end gap-3 pt-4 border-t border-white/10">
                   <button
                     type="button"
-                    onClick={() => onSetOpenCreateModal(false)}
+                    onClick={() => { onSetOpenCreateModal(false); setCreateError(null); }}
                     className="px-4 py-2 rounded-xl hover:bg-white/10 text-zinc-300 font-medium transition-colors"
                   >
                     Cancelar

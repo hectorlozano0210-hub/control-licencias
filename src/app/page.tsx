@@ -156,11 +156,12 @@ export default function Home() {
       body: JSON.stringify(data),
     });
     const json = await res.json();
-    if (res.ok) {
+    if (res.ok && json.success) {
       await refreshData();
       return json;
     } else {
-      throw new Error(json.error || "No se pudo crear la licencia");
+      const errMsg = json.error || json.message || "No se pudo registrar la licencia en Supabase";
+      throw new Error(errMsg);
     }
   };
 
