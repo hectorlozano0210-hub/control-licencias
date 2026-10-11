@@ -7,6 +7,7 @@ import { DashboardView } from "@/components/DashboardView";
 import { ClientsView } from "@/components/ClientsView";
 import { ClientDetailDrawer } from "@/components/ClientDetailDrawer";
 import { ManualPaymentModal } from "@/components/ManualPaymentModal";
+import { CreateLicenseModal } from "@/components/CreateLicenseModal";
 import { LicenseManagerView } from "@/components/LicenseManagerView";
 import { ApplicationsView } from "@/components/ApplicationsView";
 import { DeviceManagerView } from "@/components/DeviceManagerView";
@@ -443,6 +444,21 @@ export default function Home() {
           </AnimatePresence>
         </div>
       </main>
+
+      {/* Create License Modal (Global across all views: Dashboard, Apps, Clients, Licenses) */}
+      <CreateLicenseModal
+        isOpen={isOpenCreateModal}
+        onClose={() => {
+          setIsOpenCreateModal(false);
+          setLicensePreselectedCompany(undefined);
+          setLicensePreselectedApp(undefined);
+        }}
+        companies={companies}
+        apps={apps}
+        preselectedCompanyId={licensePreselectedCompany}
+        preselectedAppId={licensePreselectedApp}
+        onCreateLicense={handleCreateLicense}
+      />
 
       {/* Manual Payment Modal */}
       <ManualPaymentModal

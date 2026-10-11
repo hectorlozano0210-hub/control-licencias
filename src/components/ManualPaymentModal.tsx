@@ -137,31 +137,43 @@ export function ManualPaymentModal({
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.94, opacity: 0, y: 15 }}
             transition={{ type: "spring", stiffness: 380, damping: 28 }}
-            className="relative w-full max-w-xl rounded-2xl glass-panel border border-white/20 p-6 shadow-2xl overflow-hidden"
+            className="relative w-full max-w-xl rounded-3xl bg-[#090d12]/95 border border-gold-500/30 p-6 shadow-2xl backdrop-blur-2xl overflow-hidden"
           >
-            <BorderBeam size={220} duration={8} colorFrom="#10b981" colorTo="#8b5cf6" />
+            <BorderBeam size={240} duration={8} colorFrom="#caa455" colorTo="#10b981" />
 
             {/* Header */}
-            <div className="flex items-center justify-between pb-4 border-b border-white/10">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2.5 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                  <CreditCard className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                    Registrar Pago Manual
-                  </h3>
-                  <p className="text-xs text-zinc-400">
-                    Asienta comprobantes de banco, Nequi, PSE o efectivo y actualiza licencias.
-                  </p>
-                </div>
-              </div>
+            <div className="flex flex-col items-center text-center pb-4 border-b border-white/10 relative">
               <button
                 onClick={onClose}
-                className="p-1.5 rounded-lg hover:bg-white/10 text-zinc-400 hover:text-white transition-colors"
+                className="absolute right-0 top-0 p-1.5 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white transition-colors"
               >
                 <X className="w-4 h-4" />
               </button>
+
+              <div className="relative mb-2 flex items-center justify-center p-2 rounded-2xl bg-black/60 border border-gold-500/30 shadow-[0_0_20px_rgba(202,164,85,0.25)]">
+                <img
+                  src="/logo-masterfixpc-reducido.png"
+                  alt="Master FixPC"
+                  className="w-12 h-12 object-contain"
+                />
+                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
+                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-emerald-400" />
+              </div>
+
+              <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-gold-500/10 border border-gold-500/30 text-gold-400 text-[10px] font-mono uppercase tracking-widest mb-1">
+                <span>Tesorería & Facturación</span>
+                <span>•</span>
+                <span>Recaudo Manual</span>
+              </div>
+
+              <h3 className="text-xl font-bold tracking-tight text-white">
+                <span className="bg-gradient-to-r from-gold-300 via-gold-400 to-emerald-400 bg-clip-text text-transparent">
+                  Registrar Pago Manual
+                </span>
+              </h3>
+              <p className="text-xs text-zinc-400 max-w-sm mt-0.5">
+                Asienta comprobantes de banco, Nequi, PSE o efectivo y actualiza licencias en Supabase
+              </p>
             </div>
 
             <form onSubmit={handleSubmit} className="mt-5 space-y-4 text-xs">
@@ -358,9 +370,18 @@ export function ManualPaymentModal({
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-violet-600 hover:from-emerald-500 hover:to-violet-500 text-white font-semibold shadow-lg shadow-emerald-950/40 transition-all active:scale-95"
+                  className="btn-shine flex items-center gap-2 px-6 py-2.5 rounded-full font-bold uppercase tracking-wider text-[#080f15] shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all border border-gold-300 relative overflow-hidden group"
+                  style={{
+                    background: "linear-gradient(135deg, #ffdea1 0%, #caa455 50%, #8c6e2d 100%)",
+                    boxShadow: "0 0 20px rgba(202, 164, 85, 0.45)",
+                  }}
                 >
-                  <CheckCircle2 className="w-4 h-4" />
+                  <div className="absolute inset-0 w-1/2 h-full bg-gradient-to-r from-transparent via-white/40 to-transparent skew-x-[-25deg] -translate-x-full group-hover:translate-x-[300%] transition-transform duration-1000 ease-out pointer-events-none" />
+                  {isSubmitting ? (
+                    <RefreshCw className="w-4 h-4 animate-spin text-[#080f15]" />
+                  ) : (
+                    <CheckCircle2 className="w-4 h-4 text-[#080f15]" />
+                  )}
                   <span>{isSubmitting ? "Registrando..." : "Asentar Pago y Actualizar"}</span>
                 </button>
               </div>

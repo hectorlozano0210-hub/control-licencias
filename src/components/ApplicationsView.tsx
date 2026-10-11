@@ -282,31 +282,42 @@ export function ApplicationsView({
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="w-full max-w-lg p-6 rounded-3xl glass-panel border border-white/10 shadow-2xl relative overflow-hidden"
+              className="w-full max-w-lg p-6 rounded-3xl bg-[#090d12]/95 border border-gold-500/30 shadow-2xl relative overflow-hidden backdrop-blur-2xl"
             >
-              <BorderBeam size={200} duration={12} delay={0} colorFrom="#6366f1" colorTo="#10b981" />
+              <BorderBeam size={220} duration={12} delay={0} colorFrom="#caa455" colorTo="#6366f1" />
 
-              <div className="flex items-center justify-between pb-4 border-b border-white/10">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
-                    <FileCode className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h2 className="text-base font-bold text-white">
-                      Registrar Nueva Aplicación
-                    </h2>
-                    <p className="text-xs text-zinc-400">
-                      Se guardará en Supabase y quedará disponible para generar claves.
-                    </p>
-                  </div>
-                </div>
-
+              <div className="flex flex-col items-center text-center pb-4 border-b border-white/10 relative">
                 <button
                   onClick={() => setIsOpenCreateModal(false)}
-                  className="p-1 rounded-lg hover:bg-white/10 text-zinc-400 hover:text-white transition-colors"
+                  className="absolute right-0 top-0 p-1.5 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white transition-colors"
                 >
                   <X className="w-4 h-4" />
                 </button>
+
+                <div className="relative mb-2 flex items-center justify-center p-2 rounded-2xl bg-black/60 border border-gold-500/30 shadow-[0_0_20px_rgba(202,164,85,0.25)]">
+                  <img
+                    src="/logo-masterfixpc-reducido.png"
+                    alt="Master FixPC"
+                    className="w-12 h-12 object-contain"
+                  />
+                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
+                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-emerald-400" />
+                </div>
+
+                <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-gold-500/10 border border-gold-500/30 text-gold-400 text-[10px] font-mono uppercase tracking-widest mb-1">
+                  <span>Catálogo de Software</span>
+                  <span>•</span>
+                  <span>Nueva App</span>
+                </div>
+
+                <h2 className="text-xl font-bold tracking-tight text-white">
+                  <span className="bg-gradient-to-r from-gold-300 via-gold-400 to-indigo-400 bg-clip-text text-transparent">
+                    Registrar Nueva Aplicación
+                  </span>
+                </h2>
+                <p className="text-xs text-zinc-400 max-w-sm mt-0.5">
+                  Se guardará en Supabase y quedará disponible para generar claves de licencia
+                </p>
               </div>
 
               <form onSubmit={handleCreateApp} className="mt-5 space-y-4 text-xs">
@@ -404,12 +415,17 @@ export function ApplicationsView({
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 via-violet-600 to-emerald-500 hover:from-indigo-500 hover:to-emerald-400 text-white font-semibold shadow-lg shadow-indigo-600/30 transition-all active:scale-95"
+                    className="btn-shine flex items-center gap-2 px-6 py-2.5 rounded-full font-bold uppercase tracking-wider text-[#080f15] shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all border border-gold-300 relative overflow-hidden group"
+                    style={{
+                      background: "linear-gradient(135deg, #ffdea1 0%, #caa455 50%, #8c6e2d 100%)",
+                      boxShadow: "0 0 20px rgba(202, 164, 85, 0.45)",
+                    }}
                   >
+                    <div className="absolute inset-0 w-1/2 h-full bg-gradient-to-r from-transparent via-white/40 to-transparent skew-x-[-25deg] -translate-x-full group-hover:translate-x-[300%] transition-transform duration-1000 ease-out pointer-events-none" />
                     {isSubmitting ? (
-                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <RefreshCw className="w-4 h-4 animate-spin text-[#080f15]" />
                     ) : (
-                      <Sparkles className="w-4 h-4" />
+                      <Sparkles className="w-4 h-4 text-[#080f15]" />
                     )}
                     <span>Guardar Aplicación</span>
                   </button>
