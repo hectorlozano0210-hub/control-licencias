@@ -64,6 +64,24 @@ export function LicenseManagerView({
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [actionMenuOpenId, setActionMenuOpenId] = useState<string | null>(null);
 
+  const allApps = React.useMemo(() => {
+    const list = [...apps];
+    if (!list.some((a) => a.id === "joyeria-erp" || a.slug === "joyeria-erp")) {
+      list.push({
+        id: "joyeria-erp",
+        slug: "joyeria-erp",
+        name: "Master FixPC Joyerías ERP (joyeria-erp)",
+        description: "Software profesional para gestión de inventarios de joyería y orfebrería.",
+        current_version: "5.1.0",
+        min_supported_version: "5.0.0",
+        is_active: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      });
+    }
+    return list;
+  }, [apps]);
+
   const handleCopy = (key: string) => {
     navigator.clipboard.writeText(key);
     setCopiedKey(key);
@@ -128,7 +146,6 @@ export function LicenseManagerView({
 
           <button
             onClick={() => {
-              setCreatedLicenseResult(null);
               onSetOpenCreateModal(true);
             }}
             className="btn-shine flex items-center gap-2 px-4 py-2.5 rounded-full font-bold uppercase tracking-wider text-[#080f15] text-xs shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all border border-gold-300"

@@ -261,7 +261,7 @@ export async function PATCH(req: NextRequest) {
     }
 
     const { id, status, action, days } = validation.data;
-    const supabase = getSupabaseClient();
+    const supabase = getSupabaseAdminClient();
 
     if (action === "extend" && days) {
       const updated = store.extendLicense(id, days);

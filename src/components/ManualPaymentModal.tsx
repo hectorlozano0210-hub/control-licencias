@@ -16,6 +16,7 @@ import {
   CheckCircle2,
   X,
   FileText,
+  RefreshCw,
 } from "lucide-react";
 import { Company, License } from "@/lib/types";
 
