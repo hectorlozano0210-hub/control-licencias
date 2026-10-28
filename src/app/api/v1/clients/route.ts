@@ -95,39 +95,62 @@ export async function POST(req: NextRequest) {
 
     let generatedId: string | undefined = undefined;
 
-    // 1. Inserción real en la tabla `clients` de Supabase con Service Role
+    // 1. Inserción en la tabla `clients` de Supabase con Service Role si está configurado
     const supabase = getSupabaseAdminClient();
+    let supabasePersisted = false;
+    let supabaseWarning: string | null = null;
+
     if (supabase) {
-      const insertPayload = {
-        company_name: companyName,
-        tax_id: taxIdValue,
-        contact_name: contactNameValue,
-        contact_email: contactEmailValue,
-        contact_phone: contactPhoneValue,
-        notes: notesValue,
-      };
+      try {
+        const insertPayload = {
+          company_name: companyName,
+          tax_id: taxIdValue,
+          contact_name: contactNameValue,
+          contact_email: contactEmailValue,
+          contact_phone: contactPhoneValue,
+          notes: notesValue,
+        };
 
-      const { data: insertedRow, error: insertError } = await supabase
-        .from("clients")
-        .insert([insertPayload])
-        .select("id, company_name, tax_id, contact_name, contact_email, contact_phone, notes, created_at, updated_at")
-        .single();
+        const { data: insertedRow, error: insertError } = await supabase
+          .from("clients")
+          .insert([insertPayload])
+          .select("id, company_name, tax_id, contact_name, contact_email, contact_phone, notes, created_at, updated_at")
+          .single();
 
-      if (insertError) {
-        console.error("[SUPABASE][INSERT_CLIENT_ERROR]", insertError);
-        return NextResponse.json(
-          {
-            success: false,
-            error: `Error al registrar cliente en Supabase: ${insertError.message || insertError.details || "Fallo de inserción"}`,
-            code: insertError.code,
-            details: insertError,
-          },
-          { status: 500 }
-        );
-      }
+        if (insertError) {
+          console.error("[SUPABASE][INSERT_CLIENT_ERROR]", insertError);
+          const errMsg = (insertError.message || insertError.details || "").toLowerCase();
+          const isConnectivity =
+            errMsg.includes("fetch failed") ||
+            errMsg.includes("enotfound") ||
+            errMsg.includes("econnrefused") ||
+            errMsg.includes("etimedout") ||
+            errMsg.includes("network") ||
+            insertError.code === "PGRST000" ||
+            !insertError.code;
 
-      if (insertedRow && insertedRow.id) {
-        generatedId = insertedRow.id;
+          if (isConnectivity) {
+            console.warn("[SUPABASE][CLIENT_FALLBACK] Conexión a Supabase no disponible. Salvaguardando cliente en memoria local.");
+            supabaseWarning = "Cliente registrado en modo local. (Aviso: Supabase no respondió. Si usa Supabase gratis, verifique si su proyecto fue pausado por inactividad en supabase.com).";
+          } else {
+            // Error de esquema o restricción real de base de datos
+            return NextResponse.json(
+              {
+                success: false,
+                error: `Error al registrar cliente en Supabase: ${insertError.message || insertError.details || "Fallo de inserción"}`,
+                code: insertError.code,
+                details: insertError,
+              },
+              { status: 500 }
+            );
+          }
+        } else if (insertedRow && insertedRow.id) {
+          generatedId = insertedRow.id;
+          supabasePersisted = true;
+        }
+      } catch (networkEx: any) {
+        console.warn("[SUPABASE][CLIENT_EXCEPTION]", networkEx);
+        supabaseWarning = `Cliente registrado en memoria local. (Aviso: Supabase no respondió: ${networkEx.message || "Error de conexión"}).`;
       }
     }
 
@@ -151,6 +174,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       success: true,
       client: newCompany,
+      supabase_persisted: supabasePersisted,
+      warning: supabaseWarning || undefined,
     });
   } catch (error: any) {
     return handleApiError(error, "Error al crear cliente");

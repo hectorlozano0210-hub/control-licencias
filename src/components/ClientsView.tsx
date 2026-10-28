@@ -92,9 +92,16 @@ export function ClientsView({
         throw new Error(data.error || "No se pudo crear el cliente");
       }
 
-      toast.success("¡Cliente registrado exitosamente!", {
-        description: `${data.client.name} ha sido agregado al directorio.`,
-      });
+      if (data.warning) {
+        toast.warning("Cliente registrado (Modo Local)", {
+          description: data.warning,
+          duration: 7000,
+        });
+      } else {
+        toast.success("¡Cliente registrado exitosamente!", {
+          description: `${data.client.name} ha sido agregado al directorio.`,
+        });
+      }
 
       setName("");
       setNitRut("");

@@ -221,32 +221,58 @@ export async function POST(req: NextRequest) {
       valid_from: new Date().toISOString(),
     };
 
-    const { data: insertedRow, error: insertError } = await supabase
-      .from("licenses")
-      .insert([insertPayload])
-      .select()
-      .maybeSingle();
+    let supabasePersisted = false;
+    let supabaseWarning: string | null = null;
 
-    if (insertError) {
-      console.error("[SUPABASE][INSERT_ERROR]", insertError);
-      return NextResponse.json(
-        {
-          success: false,
-          error: `Error al registrar en Supabase: ${insertError.message || insertError.details || insertError.hint || "Fallo de permisos o tabla"} (Código: ${insertError.code || "UNKNOWN"})`,
-          code: insertError.code || "SUPABASE_INSERT_ERROR",
-          details: insertError,
-        },
-        { status: 500 }
-      );
-    }
+    if (supabase) {
+      try {
+        const { data: insertedRow, error: insertError } = await supabase
+          .from("licenses")
+          .insert([insertPayload])
+          .select()
+          .maybeSingle();
 
-    if (insertedRow && insertedRow.id) {
-      newLic.id = insertedRow.id;
+        if (insertError) {
+          console.error("[SUPABASE][INSERT_ERROR]", insertError);
+          const errMsg = (insertError.message || insertError.details || "").toLowerCase();
+          const isConnectivity =
+            errMsg.includes("fetch failed") ||
+            errMsg.includes("enotfound") ||
+            errMsg.includes("econnrefused") ||
+            errMsg.includes("etimedout") ||
+            errMsg.includes("network") ||
+            insertError.code === "PGRST000" ||
+            !insertError.code;
+
+          if (isConnectivity) {
+            console.warn("[SUPABASE][LICENSE_FALLBACK] Conexión a Supabase no disponible. Licencia activa en memoria local.");
+            supabaseWarning = "Licencia emitida en modo local. (Aviso: Supabase no respondió. Verifique si su proyecto está activo o pausado en supabase.com).";
+          } else {
+            return NextResponse.json(
+              {
+                success: false,
+                error: `Error al registrar en Supabase: ${insertError.message || insertError.details || insertError.hint || "Fallo de permisos o tabla"} (Código: ${insertError.code || "UNKNOWN"})`,
+                code: insertError.code || "SUPABASE_INSERT_ERROR",
+                details: insertError,
+              },
+              { status: 500 }
+            );
+          }
+        } else if (insertedRow && insertedRow.id) {
+          newLic.id = insertedRow.id;
+          supabasePersisted = true;
+        }
+      } catch (networkEx: any) {
+        console.warn("[SUPABASE][LICENSE_EXCEPTION]", networkEx);
+        supabaseWarning = `Licencia emitida en memoria local. (Aviso: Supabase offline: ${networkEx.message || "Error de red"}).`;
+      }
     }
 
     return NextResponse.json({
       success: true,
       license: newLic,
+      supabase_persisted: supabasePersisted,
+      warning: supabaseWarning || undefined,
     });
   } catch (error: any) {
     return handleApiError(error, "Error al generar licencia");

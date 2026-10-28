@@ -183,9 +183,16 @@ export function CreateLicenseModal({
           spread: 70,
           origin: { y: 0.6 },
         });
-        toast.success("¡Licencia emitida exitosamente!", {
-          description: `Clave: ${res.license.license_key} (${res.license.max_seats} cupos)`,
-        });
+        if (res.warning) {
+          toast.warning("Licencia emitida (Modo Local)", {
+            description: res.warning,
+            duration: 8000,
+          });
+        } else {
+          toast.success("¡Licencia emitida exitosamente!", {
+            description: `Clave: ${res.license.license_key} (${res.license.max_seats} cupos)`,
+          });
+        }
       } else if (res && res.error) {
         setCreateError(res.error);
         toast.error("Error al emitir la licencia", { description: res.error, duration: 8000 });

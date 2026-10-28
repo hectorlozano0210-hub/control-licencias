@@ -135,6 +135,28 @@ export function extractSupabaseUrlFromDatabaseUrl(dbUrl: string): string | null 
  * 1. SUPABASE_SERVICE_ROLE_KEY (Privilegiada para backend)
  * 2. SUPABASE_ANON_KEY / NEXT_PUBLIC_SUPABASE_ANON_KEY
  */
+export function isPlaceholderConfig(val: string | null | undefined): boolean {
+  if (!val || typeof val !== "string") return false;
+  const lower = val.toLowerCase().trim();
+  return (
+    lower.includes("tu-proyecto") ||
+    lower.includes("your-project") ||
+    lower.includes("ejemplo_service_role_key") ||
+    lower.includes("ejemplo_anon_key") ||
+    lower.includes("tu-clave-secreta")
+  );
+}
+
+/**
+ * Resuelve y centraliza la configuración de base de datos con orden de prioridad estricto:
+ * 1. SUPABASE_URL (Variable de backend en Docker / Render)
+ * 2. NEXT_PUBLIC_SUPABASE_URL (Variable de frontend / Vercel)
+ * 3. DATABASE_URL (Cadena de conexión PostgreSQL de Supabase)
+ *
+ * Y resolución de claves:
+ * 1. SUPABASE_SERVICE_ROLE_KEY (Privilegiada para backend)
+ * 2. SUPABASE_ANON_KEY / NEXT_PUBLIC_SUPABASE_ANON_KEY
+ */
 export function getDatabaseConfig(): DatabaseConfig {
   const rawDirect = process.env.SUPABASE_URL || "";
   const rawPublic = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
@@ -161,26 +183,27 @@ export function getDatabaseConfig(): DatabaseConfig {
   let url: string | null = null;
   let source: DatabaseConfig["source"] = "none";
 
-  if (directUrl) {
+  if (directUrl && !isPlaceholderConfig(directUrl)) {
     url = directUrl;
     source = "SUPABASE_URL";
-  } else if (publicUrl) {
+  } else if (publicUrl && !isPlaceholderConfig(publicUrl)) {
     url = publicUrl;
     source = "NEXT_PUBLIC_SUPABASE_URL";
-  } else if (databaseUrl && databaseUrl.trim().length > 0) {
+  } else if (databaseUrl && databaseUrl.trim().length > 0 && !isPlaceholderConfig(databaseUrl)) {
     const extracted = extractSupabaseUrlFromDatabaseUrl(databaseUrl);
-    if (extracted) {
+    if (extracted && !isPlaceholderConfig(extracted)) {
       url = sanitizeSupabaseUrl(extracted);
       source = "DATABASE_URL";
     }
   }
 
-  const isConfigured = Boolean(url && key);
+  const validKey = key && !isPlaceholderConfig(key) ? key : null;
+  const isConfigured = Boolean(url && validKey);
 
   return {
     isConfigured,
     url,
-    key,
+    key: validKey,
     databaseUrl,
     source,
   };
